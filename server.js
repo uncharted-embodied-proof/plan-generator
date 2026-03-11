@@ -90,6 +90,8 @@ async function generateSearchCode(query) {
         The code should look for node objects in world.json if the question is about the world. 
         The code should look for plan objects in plans.json if the question is about flight plans/paths
 
+        If the user is asking about "how many" or counts, return a short summary string with the count of the objects and the objerct type, not the objects themselves.
+
         Assume you have global variables "world" and "plans' as specified above, return the javascript code
         The last line of the code should be the answer
 
