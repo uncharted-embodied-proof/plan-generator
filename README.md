@@ -1,5 +1,7 @@
 ## Plan and state generator
-Provides a script that generates possible world-graph, along with listing viable plans
+Provides a script that generates possible world-graph, along with listing viable plans.
+
+Provides a simple interface to chat about the generated files
 
 
 ### States and Plans
@@ -19,7 +21,7 @@ A state is defined as possible internal/external conditions at a given step. For
 ```
 
 
-A plan is a listing of world-states to be executed by the operator. The summary section provide aggregated user-metrics calculate over each state in the listing.
+A plan is a listing of world-states to be executed by the operator in order. The summary section provide aggregated user-metrics calculate over each state in the listing.
 
 ```
 {
@@ -44,6 +46,7 @@ A plan is a listing of world-states to be executed by the operator. The summary 
 Assume NodeJS is available. This will generate two files
 - world.json: a graph of all world state as nodes and possible connecting edges between them
 - plans.json: a listing of viale plans 
+- locations.json: topologicial graph based on location
 
 ```
 npm install
@@ -53,3 +56,13 @@ node ./traverse.js
 
 
 
+### Running with chat agent
+Once the above files have been generated, you can chat with an agent to reason over them
+
+```
+npm install
+
+node ./server.js
+```
+
+Then the UI interface is available at `http://localhost:8888`

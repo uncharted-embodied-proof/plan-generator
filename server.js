@@ -10,7 +10,7 @@ const world = JSON.parse(fs.readFileSync('./world.json', 'utf8'));
 const plans = JSON.parse(fs.readFileSync('./plans.json', 'utf8'));
 
 const app = express();
-const port = 3000;
+const port = 8888;
 
 app.use(express.json());
 app.use(express.static(path.resolve(process.cwd())));
