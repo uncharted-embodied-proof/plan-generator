@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat with Gemini</title>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
+
+    <style>
+        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; }
+        #chat-container { width: 80%; max-width: 800px; border: 1px solid #ccc; padding: 20px; border-radius: 5px; }
+        #chat-history { height: 400px; overflow-y: scroll; border-bottom: 1px solid #ccc; margin-bottom: 10px; padding: 10px; }
+        .message { margin-bottom: 10px; }
+        .user-message { text-align: right; color: blue; }
+        .bot-message { text-align: left; color: #234; background: #eee}
+        #input-area { display: flex; width: 100%; }
+        #message-input { flex-grow: 1; padding: 5px; }
+        #send-button { padding: 5px 10px; }
+    </style>
+</head>
+<body style="display: flex; flex-direction: row"">
+    <!--
+    <image src="./simple-world.png" height="400px" />
+      -->
+    <div id="map"></div>
+    <div id="chat-container">
+        <div id="chat-history"></div>
+        <div id="input-area">
+            <input type="text" id="message-input" placeholder="Type your message...">
+            <button id="send-button">Send</button>
+        </div>
+    </div>
+
+    <script>
+        const chatHistory = document.getElementById('chat-history');
+        const messageInput = document.getElementById('message-input');
+        const sendButton = document.getElementById('send-button');
+
+        let conversationHistory = [];
+
+
+        function generateGraph(world, topIds = [], bottomIds = []) {
+          const width = 250;
+          const height = 450;
+
+          const nodes = world.nodes.map(d => ({ ...d }));
+          const links = world.edges.map(d => ({ ...d }));
+
+          const svg = d3.select("#map")
+            .append("svg")
+            .attr("width", width)
+            .attr("height", height);
+
+          const link = svg.append("g")
+            .selectAll("line")
+            .data(links)
+            .enter()
+            .append("line")
+            .attr("stroke", "#aaa");
+
+          const nodeGroup = svg.append("g")
+            .selectAll("g")
+            .data(nodes)
+            .enter()
+            .append("g")
+            .call(d3.drag()
+              .on("start", dragstarted)
+              .on("drag", dragged)
+              .on("end", dragended));
+
+          nodeGroup.append("circle")
+            .attr("r", 15)
+            .attr("fill", "#ccc");
+
+          nodeGroup.append("text")
+            .text(d => d.id)
+            .attr("x", -5)
+            .attr("y", 4)
+            .style("font-size", "14px")
+            .style("font-family", "sans-serif");
+
+          const simulation = d3.forceSimulation(nodes)
+            .force("link", d3.forceLink(links)
+              .id(d => d.id)
+              .distance(120))
+            .force("charge", d3.forceManyBody().strength(-300))
+            .force("center", d3.forceCenter(width / 2, height / 2))
+            .force("x", d3.forceX(width / 2).strength(0.05))
+            .force("y", d3.forceY(height / 2).strength(0.05))
+            .on("tick", ticked);
+
+          nodes.forEach(n => {
+            if (topIds.includes(n.id)) {
+              n.fx = width / 2;
+              n.fy = 50;
+            }
+            if (bottomIds.includes(n.id)) {
+              n.fx = width / 2;
+              n.fy = height - 50;
+            }
+          });
+
+          function ticked() {
+            link
+              .attr("x1", d => d.source.x)
+              .attr("y1", d => d.source.y)
+              .attr("x2", d => d.target.x)
+              .attr("y2", d => d.target.y);
+
+            nodeGroup.attr("transform", d => `translate(${d.x}, ${d.y})`);
+          }
+
+          function dragstarted(event, d) {
+            if (!event.active) simulation.alphaTarget(0.3).restart();
+            d.fx = d.x;
+            d.fy = d.y;
+          }
+
+          function dragged(event, d) {
+            d.fx = event.x;
+            d.fy = event.y;
+          }
+
+          function dragended(event, d) {
+            if (!event.active) simulation.alphaTarget(0);
+            if (!topIds.includes(d.id) && !bottomIds.includes(d.id)) {
+              d.fx = null;
+              d.fy = null;
+            }
+          }
+        }
+
+
+
+
+        fetch('./locations.json', {
+          method: 'GET',
+          headers: {
+              'Content-Type': 'application/json'
+          }
+        }).then(d => {
+          return d.json()
+        }).then(d => {
+          generateGraph(d, ['X'], ['Y']);
+        });;
+
+        async function sendMessage() {
+            const message = messageInput.value.trim();
+            if (!message) return;
+
+            appendMessage(message, 'user-message');
+            messageInput.value = '';
+
+            try {
+                const response = await fetch('/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ message, history: conversationHistory })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to get response from server');
+                }
+
+                const data = await response.json();
+                const reply = data.reply;
+
+                appendMessage(reply, 'bot-message');
+
+                // Update conversation history
+                conversationHistory.push({ role: 'user', parts: [{ text: message }] });
+                conversationHistory.push({ role: 'model', parts: [{ text: reply }] });
+
+            } catch (error) {
+                console.error('Error:', error);
+                appendMessage('Error: Could not connect to the server.', 'bot-message');
+            }
+        }
+
+        function appendMessage(text, className) {
+            const messageElement = document.createElement('div');
+            messageElement.classList.add('message', className);
+
+
+            messageElement.innerHTML = marked.parse(text);
+            chatHistory.appendChild(messageElement);
+            chatHistory.scrollTop = chatHistory.scrollHeight;
+        }
+
+        sendButton.addEventListener('click', sendMessage);
+        messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+    </script>
+</body>
+</html>

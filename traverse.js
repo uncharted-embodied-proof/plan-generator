@@ -109,8 +109,8 @@ function neighbourNodes(locationId, worldStates) {
 }
 
 
-const worldStates = [];
-const worldEdges = [];
+let worldStates = [];
+let worldEdges = [];
 let cnt = 0;
 zones.forEach(z => {
   const permutations = cartesianObject(model);
@@ -122,6 +122,22 @@ zones.forEach(z => {
     });
   });
 });
+
+
+// Do some pruning so we don't explode the state space too much
+// 1 - Remove comm variability at start (X)
+// 2 - Remove avoidance variability at start (X)
+worldStates = worldStates.filter(ws => {
+  if (ws.avoidcance === 1 && ws.location === 'X') return false;
+  if (ws.comm === 1 && ws.location === 'X') return false;
+
+  if (ws.avoidcance === 1 && ws.location === 'Y') return false;
+  if (ws.comm === 1 && ws.location === 'Y') return false;
+
+
+  return true;
+});
+
 
 worldStates.forEach(s => {
   neighbourNodes(s.location, worldStates).forEach(s2 => {
@@ -300,7 +316,28 @@ const plans = rawPlansThatReachedGoal.map((p, i) => {
   }
 });
 
+
+
+// Build a location topology 
+const locationGraph = {
+  nodes: [],
+  edges: []
+};
+
+zones.forEach(z => {
+  locationGraph.nodes.push({ id: z.location });
+  const targets = getNextLocations(z.location );
+
+  targets.forEach(t => {
+    locationGraph.edges.push({
+      source: z.location, target: t
+    });
+  });
+});
+
+
 fs.writeFileSync('./world.json', JSON.stringify(world),  'utf8');
 fs.writeFileSync('./plans.json', JSON.stringify(plans),  'utf8');
+fs.writeFileSync('./locations.json', JSON.stringify(locationGraph),  'utf8');
 process.exit()
 

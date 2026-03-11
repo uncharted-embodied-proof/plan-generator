@@ -113,24 +113,37 @@ async function runTool(name, args) {
     console.log('>> calling tool:', query);
 
     const toolResultText = await generateSearchCode(query);
-    console.log('...........');
-    console.log(toolResultText);
-    console.log('...........');
-    console.log('');
 
 
     if (toolResultText) {
       // const fn = new Function(toolResultText + "; return Object.values(this).find(v => typeof v === 'function');")();
       const evalResult = eval(toolResultText);
-      return { result: evalResult };
-    }
-    return { result: 'Cannot process request, maybe rephrase the the query' };
 
-    // const path = computePath(start, goal); // your logic
-    // return {
-    //   path,
-    //   distance: path.length
-    // };
+      console.log('...........');
+      console.log(toolResultText);
+      console.log('');
+      console.log(evalResult);
+      console.log('');
+      console.log('...........');
+      console.log('');
+
+      if (Array.isArray(evalResult)) {
+        if (evalResult.length === 0) {
+          console.log('!! no results found');
+          return { answer: 'No results found' };
+        }
+      }
+      return { 
+        answer: `
+          === Tool logic ===
+          ${toolResultText}
+
+          === Tool answer === 
+          ${evalResult}
+        `
+      };
+    }
+    return { answer: 'Cannot process request, maybe rephrase the the query' };
   }
 }
 
@@ -157,6 +170,7 @@ app.post('/chat', async (req, res) => {
 
   let responseText = '';
 
+
   const contents = [...history, { role: "user", parts: [{ text: message }] }];
   while (true) {
     const response = await ai.models.generateContent({
@@ -164,13 +178,25 @@ app.post('/chat', async (req, res) => {
       config: {
         systemInstruction: `
           You are an expert navigator trained to help drone operators solve navigation problems.
+
+          We are working with the following constraints:
+          - Any plans that use more than 2000 energy units are potentially invalid
+          - Any plans that use more than 120 time units are potentially invalid
+          - Any plans with difficulty more than 100 units are potentially invalid
+
+
+          When a tool returns a response, interpret the result and provide the final answer to the user. Do not call another tool unless absolutely necessary.
+
           Be concise in your answers unless otherwise noted.
         `,
         temperature: 0.5,
-        tools: tools
+        tools: tools,
+        tool_choice: contents.some(c => c.role === "tool") ? "none" : "auto"
       },
       contents: contents
     });
+    responseText = response.text;
+    console.log('debugging', responseText);
 
     const candidate = response.candidates?.[0];
     const parts = candidate?.content?.parts || [];
@@ -190,15 +216,11 @@ app.post('/chat', async (req, res) => {
           }
         }]
       });
-
     } else {
-      responseText = response.text;
       break;
     }
   }
-
   res.send({ reply: responseText });
-
 
   /*
   try {
