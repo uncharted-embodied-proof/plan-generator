@@ -3,6 +3,15 @@ Provides a script that generates possible world-graph, along with listing viable
 
 Provides a simple interface to chat about the generated files
 
+### Setup
+For file generation:
+- Run `npm install`
+
+For running the server we need python as well:
+- Run `pip install -r requirements.txt`
+
+You need to create an `.env` file with a valid GEMINI_API_KEY entry
+
 
 ### States and Plans
 A state is defined as possible internal/external conditions at a given step. For example:
@@ -49,8 +58,6 @@ Assume NodeJS is available. This will generate two files
 - locations.json: topologicial graph based on location
 
 ```
-npm install
-
 node ./traverse.js
 ```
 
@@ -60,8 +67,6 @@ node ./traverse.js
 Once the above files have been generated, you can chat with an agent to reason over them
 
 ```
-npm install
-
 node ./server.js
 ```
 
