@@ -47,7 +47,8 @@ const NUM_STEPS = 5;
 const model = {
   comm: [1, 0],
   avoidance: [1, 0],
-  boost: [1, 0]
+  boost: [1, 0],
+  heater: [1, 0],
 };
 
 const zones = [
@@ -134,7 +135,6 @@ worldStates = worldStates.filter(ws => {
   if (ws.avoidcance === 1 && ws.location === 'Y') return false;
   if (ws.comm === 1 && ws.location === 'Y') return false;
 
-
   return true;
 });
 
@@ -186,9 +186,10 @@ function traverseGraph(world, startId, k) {
     visitCount.set(current, (visitCount.get(current) || 0) + 1);
     path.push(current);
 
+    // Stop if we ended up where we started
     if (starts.includes(current) && depth > 0) {
-      // console.log(path);
       results.push([...path]);
+
       // Backtrack
       path.pop();
       visitCount.set(current, visitCount.get(current) - 1);
@@ -209,9 +210,10 @@ function traverseGraph(world, startId, k) {
         }
       }
     }
-    if (depth === k) {
-      results.push([...path]);
-    }
+
+    // if (depth === k) {
+    //   results.push([...path]);
+    // }
 
     // Backtrack
     path.pop();
