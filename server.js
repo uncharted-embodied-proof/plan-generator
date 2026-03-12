@@ -3,6 +3,7 @@ import express from "express";
 import { GoogleGenAI } from "@google/genai";
 import fs from "fs";
 import path from "path";
+import { spawn } from 'child_process';
 
 dotenv.config();
 
@@ -24,7 +25,7 @@ const tools = [
     functionDeclarations: [
       {
         name: "generate_search_code",
-        description: "Generate code that can be evaluated and run to find facts about the graph/world and plans",
+        description: "Generate code that can be evaluated and run to find facts about the state/world and plans",
         parameters: {
           type: "object",
           properties: {
@@ -38,6 +39,24 @@ const tools = [
       },
     ],
   },
+  {
+    functionDeclarations: [
+      {
+        name: "python_query",
+        description: "Handles complicated graph queries like traversals, spanning trees, neighbourhood search and the like. Also general questions unrelated to nav-plans",
+        parameters: {
+          type: "object",
+          properties: {
+            query: {
+              type: "string",
+              description: "The question relating to graph properties",
+            }
+          },
+          required: ["query"],
+        },
+      },
+    ],
+  }
 ];
 
 
@@ -108,6 +127,28 @@ async function generateSearchCode(query) {
   return toolResultText;
 }
 
+function runPython(query) {
+  return new Promise((resolve, reject) => {
+    const py = spawn("python", ["python-ai.py", query]);
+
+    let stdout = "";
+    let stderr = "";
+
+    py.stdout.on("data", (data) => {
+      stdout += data.toString();
+    });
+
+    py.stderr.on("data", (data) => {
+      stderr += data.toString();
+    });
+
+    py.on("close", (code) => {
+      if (code !== 0) return reject(stderr);
+      resolve(stdout);
+    });
+  });
+}
+
 
 async function runTool(name, args) {
   if (name === "generate_search_code") {
@@ -121,13 +162,13 @@ async function runTool(name, args) {
       // const fn = new Function(toolResultText + "; return Object.values(this).find(v => typeof v === 'function');")();
       const evalResult = eval(toolResultText);
 
-      console.log('...........');
-      console.log(toolResultText);
-      console.log('');
-      console.log(evalResult);
-      console.log('');
-      console.log('...........');
-      console.log('');
+      // console.log('...........');
+      // console.log(toolResultText);
+      // console.log('');
+      // console.log(evalResult);
+      // console.log('');
+      // console.log('...........');
+      // console.log('');
 
       if (Array.isArray(evalResult)) {
         if (evalResult.length === 0) {
@@ -135,17 +176,29 @@ async function runTool(name, args) {
           return { answer: 'No results found' };
         }
       }
+      console.log(`<< result: `, evalResult);
+
       return { 
         answer: `
           === Tool logic ===
           ${toolResultText}
 
           === Tool answer === 
-          ${evalResult}
+          ${JSON.stringify(evalResult)}
         `
       };
     }
     return { answer: 'Cannot process request, maybe rephrase the the query' };
+  } else if (name === "python_query") {
+    const { query } = args;
+    console.log('>> calling python tool:', query);
+    const output = await runPython(query);
+    return { 
+      answer: `
+        === Tool answer === 
+        ${output}
+      `
+    };
   }
 }
 
@@ -170,69 +223,82 @@ app.post('/chat', async (req, res) => {
     return res.status(400).send({ error: 'Message is required' });
   }
 
+  let iteration = 0;
   let responseText = '';
 
+  console.log('');
+  console.group('processing chat');
+  console.log(`query: ${message}`);
 
   const contents = [...history, { role: "user", parts: [{ text: message }] }];
+
   while (true) {
-    const response = await ai.models.generateContent({
-      model: MODEL,
-      config: {
-        systemInstruction: `
-          You are an expert navigator trained to help drone operators solve navigation problems.
+    iteration ++;
+    const toolChoice = contents.some(c => c.role === 'tool') ? 'none' : 'auto';
+    console.log(`iteration: ${iteration}`);
+    console.log(`tool choice: ${toolChoice}`);
 
-          We are working with the following constraints:
-          - Any plans that use more than 2000 energy units are potentially invalid
-          - Any plans that use more than 120 time units are potentially invalid
-          - Any plans with difficulty more than 100 units are potentially invalid
+    try {
+      const response = await ai.models.generateContent({
+        model: MODEL,
+        config: {
+          systemInstruction: `
+            You are an expert navigator trained to help drone operators solve navigation problems.
+
+            We are working with the following constraints:
+            - Any plans that use more than 2000 energy units are potentially invalid
+            - Any plans that use more than 120 time units are potentially invalid
+            - Any plans with difficulty more than 100 units are potentially invalid
 
 
-          When a tool returns a response, interpret the result and provide the final answer to the user. Do not call another tool unless absolutely necessary.
+            !! Important !!
+            When a tool returns a response, interpret the result and provide the final answer to the user. 
+            Do not call another tool unless absolutely necessary.
 
-          Be concise in your answers unless otherwise noted.
-        `,
-        temperature: 0.5,
-        tools: tools,
-        tool_choice: contents.some(c => c.role === "tool") ? "none" : "auto"
-      },
-      contents: contents
-    });
-    responseText = response.text;
-    console.log('debugging', responseText);
+            If the user asked for a specific plan, eg: "show me plan x", and we have an object representation, just interpret it, do not use anotehr tool
+            
 
-    const candidate = response.candidates?.[0];
-    const parts = candidate?.content?.parts || [];
-
-    const toolCall = parts.find(p => p.functionCall);
-    if (toolCall) {
-      const { name, args } = toolCall.functionCall;
-      const result = await runTool(name, args);
-      contents.push(candidate.content);
-
-      contents.push({
-        role: "tool",
-        parts: [{
-          functionResponse: {
-            name,
-            response: result
-          }
-        }]
+            Be concise in your answers unless otherwise noted.
+          `,
+          temperature: 0.5,
+          tools: tools,
+          tool_choice: toolChoice
+        },
+        contents: contents
       });
-    } else {
+
+      const candidate = response.candidates?.[0];
+      const parts = candidate?.content?.parts || [];
+
+      const toolCall = parts.find(p => p.functionCall);
+      if (toolCall) {
+        const { name, args } = toolCall.functionCall;
+        console.log('debugging', name, args);
+        const result = await runTool(name, args);
+        contents.push(candidate.content);
+
+        contents.push({
+          role: "tool",
+          parts: [{
+            functionResponse: {
+              name,
+              response: result
+            }
+          }]
+        });
+      } else {
+        console.log('no tools needed for query');
+        responseText = response.text;
+        break;
+      }
+    } catch (err) {
+      console.log(`LLM errored out somewhere, ${err}`);
+      responseText = 'Soemthing bad happened...we probably hit a rate limit';
       break;
     }
   }
+  console.groupEnd();
   res.send({ reply: responseText });
-
-  /*
-  try {
-    const text = response.text;
-    res.send({ reply: text });
-  } catch (err) {
-    console.error("Error:", err.message);
-    res.status(500).send({ error: 'Failed to get response from AI' });
-  }
-  */
 });
 
 app.listen(port, () => {
