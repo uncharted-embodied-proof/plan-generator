@@ -10,6 +10,12 @@ dotenv.config();
 const world = JSON.parse(fs.readFileSync('./world.json', 'utf8'));
 const plans = JSON.parse(fs.readFileSync('./plans.json', 'utf8'));
 
+
+console.group('==== server start ===');
+console.log(`# state=${world.nodes.length}, # edges=${world.edges.length}`);
+console.log(`# plans=${plans.length}`);
+console.groupEnd();
+
 const app = express();
 const port = 8888;
 

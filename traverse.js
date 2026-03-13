@@ -54,39 +54,45 @@ const model = {
 const zones = [
   {
     location: 'X', 
-    distance: 100,
+    distance: 5,
     weather: 'good',
-    difficulty: 10
+    difficulty: 29,
+    temperature: 18
   },
   {
     location: 'Y',
-    distance: 100,
+    distance: 3,
     weather: 'good',
-    difficulty: 10
+    difficulty: 1592, 
+    temperature: 5
   },
   {
     location: 'A',
-    distance: 50,
-    weather: 'bad',
-    difficulty: 10
+    distance: 10,
+    weather: 'good',
+    difficulty: 112,
+    temperature: 18
   },
   {
     location: 'B',
-    distance: 10,
+    distance: 5,
     weather: 'bad',
-    difficulty: 100
+    difficulty: 310,
+    temperature: 10
   },
   {
     location: 'C',
-    distance: 50,
+    distance: 8,
     weather: 'good',
-    difficulty: 100
+    difficulty: 792 ,
+    temperature: 5
   },
   {
     location: 'D',
-    distance: 200,
+    distance: 4,
     weather: 'good',
-    difficulty: 10
+    difficulty: 1331,
+    temperature: 8
   }
 ];
 
@@ -264,47 +270,68 @@ const BOOST = 1.5;
 const BASE_SPEED = 3;
 
 
+
+const v_base = 2.0;
+const v_boost = 18.0;
+
+
+const P_base = 1000;
+const P_boost = 200;
+const P_payload = 1000;
+const P_comms = 8;
+const P_avoid = 20;
+const P_weather = 237;
+const E_full = 780;
+
+
+const T_payload = 4.0;
+const W_base = 2000;
+const c_cond = 0.2;
+const c_payload = 4200;
+const m_payload = 1.5;
+
 const plans = rawPlansThatReachedGoal.map((p, i) => {
-  let dropped = false;
   let totalDifficulty = 0;
   let totalEnergy = 0;
   let totalTime = 0;
 
+  let dropped = false;
+  let currentTemperature = T_payload;
+  let stats = [];
+
   for (const pid of p) {
     const ws = worldStateMap.get(pid);
+    const travelTime = ws.distance / ((1 - ws.boost) * v_base + ws.boost * v_boost);
 
-    const speed = BASE_SPEED * (ws.boost === 1 ? BOOST : NONE);
+    const weatherValue = (ws.weather === 'good' ? 0 : 2000);
 
-    // Energy 
-    let energyExpense = Math.pow(ENERGEY_PER_UNIT, ws.boost === 1 ? 3 : 1);
-    let energy = energyExpense * ws.distance; 
+    const energyUsage = travelTime * (
+      P_base + P_weather * ( weatherValue / W_base) * (1 - ws.boost) + 
+      P_boost * ws.boost + 
+      P_payload * (dropped === false ? 1 : 0)+ 
+      P_comms * ws.comm + 
+      P_avoid * ws.avoid + 
+      c_cond * (ws.temperature - T_payload) * ws.heater
+    ); 
 
-    if (dropped === false) {
-      energy += PAYLOAD_ENERGY_PER_UNIT * ws.distance;
-    }
-    if (ws.comm === 1) {
-      energy += COMM_ENERGY_PER_UNIT * ws.distance;
-    }
-    if (ws.avoidance === 1) {
-      energy += AVOIDANCE_ENERGY_PER_UNIT * ws.distance;
-    }
-    totalEnergy += energy;
-    
-    // Safety
-    let difficulty = ws.difficulty;
-    difficulty += ws.weather === 'bad' ? 50 : 0;
-    difficulty *= ws.avoidance === 1 ? AVOIDANCE_EFFECT : NONE;
-    difficulty *= ws.comm === 1 ? COMM_EFFECT : NONE; 
-    totalDifficulty += difficulty;
+    const temperatureDelta = T_payload * ws.heater + (1 - ws.heater) * (ws.tempature - T_payload) * c_cond * travelTime / (c_payload * m_payload)
+    currentTemperature += temperatureDelta;
 
-    // Time
-    let time = ws.distance / speed;
-    totalTime += time;
-
+    const difficulty = ws.difficulty * (1 - ws.comm) * (1 - ws.avoidcance) + weatherValue * (1 - ws.boost);
 
     if (goals.includes(pid)) {
       dropped = true;
     }
+
+    // Calculation all done, settle up
+    totalTime += travelTime;
+    totalEnergy += energyUsage;
+    totalDifficulty += difficulty;
+
+    stats.push({
+      payloadTemp: currentTemperature,
+      battery: +((E_full - totalEnergy) / E_full).toFixed(2)
+    });
   }
 
   return { 
@@ -314,6 +341,7 @@ const plans = rawPlansThatReachedGoal.map((p, i) => {
       energy: +(totalEnergy.toFixed(0)),
       difficulty: +(totalDifficulty.toFixed(0)),
     },
+    stats,
     plan: p 
   }
 });
@@ -338,8 +366,25 @@ zones.forEach(z => {
 });
 
 
+function* stringifyArray(arr) {
+  yield "[";
+  for (let i = 0; i < arr.length; i++) {
+    if (i) yield ",";
+    yield JSON.stringify(arr[i]);
+  }
+  yield "]";
+}
+
+
 fs.writeFileSync('./world.json', JSON.stringify(world),  'utf8');
-fs.writeFileSync('./plans.json', JSON.stringify(plans),  'utf8');
+// fs.writeFileSync('./plans.json', JSON.stringify(plans),  'utf8');
+
+const stream = fs.createWriteStream("data.json");
+for (const chunk of stringifyArray(stringifyArray(plans))) {
+  stream.write(chunk);
+}
+stream.end();
+
 fs.writeFileSync('./locations.json', JSON.stringify(locationGraph),  'utf8');
 process.exit()
 
