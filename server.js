@@ -31,7 +31,7 @@ const tools = [
     functionDeclarations: [
       {
         name: "generate_search_code",
-        description: "Generate code that can be evaluated and run to find facts about the state/world and plans",
+        description: "Generate code that can be evaluated and run to find facts about the states, world, and plans",
         parameters: {
           type: "object",
           properties: {
@@ -49,7 +49,7 @@ const tools = [
     functionDeclarations: [
       {
         name: "python_query",
-        description: "Handles complicated graph queries like traversals, spanning trees, neighbourhood search and the like. Also general questions unrelated to nav-plans",
+        description: "Handles complicated graph analyics like traversals, spanning trees, neighbourhood search, pareto fronts and the like.",
         parameters: {
           type: "object",
           properties: {
@@ -71,7 +71,7 @@ const tools = [
 **/
 async function generateSearchCode(query) {
   const response = await ai.models.generateContent({
-    model: MODEL,
+    model: CODE_MODEL,
     config: {
       systemInstruction: `
         You are an expert in javascript coding and json formats. Your job is to generate JS code to evaulate over the following JSONs
@@ -94,7 +94,9 @@ async function generateSearchCode(query) {
           edges: [ { source, target }, ... ]
         }
 
-        plans.json looks like, the plan array references the nodes in the world.json structure
+        plans.json looks like:
+        - the plan array references the nodes in the world.json structure, 
+        - the stats array is a cumulative state after each step in plan
 
         [
           {
@@ -104,6 +106,12 @@ async function generateSearchCode(query) {
               energy: number,
               difficulty: number
             },
+            stats: [
+              { battery, temp },
+              { battery, temp },
+              { battery, temp },
+              ...
+            ],
             plan: [
               number, number, number, ...
             ]
@@ -115,7 +123,8 @@ async function generateSearchCode(query) {
         The code should look for node objects in world.json if the question is about the world. 
         The code should look for plan objects in plans.json if the question is about flight plans/paths
 
-        If the user is asking about "how many" or counts, return a short summary string with the count of the objects and the objerct type, not the objects themselves.
+        If the operator is asking for a number, eg: "how many ...", "number of ...". Return a short summary.
+        Do not return a list of objects unless explictedly asked to do so.
 
         Assume you have global variables "world" and "plans' as specified above, return the javascript code
         The last line of the code should be the answer
@@ -159,7 +168,7 @@ function runPython(query) {
 async function runTool(name, args) {
   if (name === "generate_search_code") {
     const { query } = args;
-    console.log('>> calling tool:', query);
+    console.log('>> calling JS tool:', query);
 
     const toolResultText = await generateSearchCode(query);
 
@@ -218,6 +227,9 @@ const ai = new GoogleGenAI({
 // const MODEL = "gemini-2.5-flash-lite";
 const MODEL = "gemini-3.1-flash-lite-preview";
 
+const CODE_MODEL = "gemini-2.5-flash-lite";
+
+
 app.get('/', (req, res) => {
   res.sendFile(path.resolve(process.cwd(), 'index.html'));
 });
@@ -252,8 +264,7 @@ app.post('/chat', async (req, res) => {
             You are an expert navigator trained to help drone operators solve navigation problems.
 
             We are working with the following constraints:
-            - Any plans that use more than 2000 energy units are potentially invalid
-            - Any plans that use more than 120 time units are potentially invalid
+            - Any plans where battery falls below 0.1 are potentially invalid
             - Any plans with difficulty more than 100 units are potentially invalid
 
 

@@ -39,10 +39,13 @@ function isEqualNoId(obj1, obj2) {
 }
 
 
+
+
 ////////////////////////////////////////////////////////////////////////////////
 // World specification
 ////////////////////////////////////////////////////////////////////////////////
 const NUM_STEPS = 5;
+
 
 const model = {
   comm: [1, 0],
@@ -51,45 +54,56 @@ const model = {
   heater: [1, 0],
 };
 
+
+/*
+const model = {
+  comm: [0],
+  avoidance: [0],
+  boost: [1],
+  heater: [0],
+};
+*/
+
+
 const zones = [
   {
     location: 'X', 
-    distance: 5,
+    distance: 5000,
     weather: 'good',
     difficulty: 29,
     temperature: 18
   },
   {
     location: 'Y',
-    distance: 3,
+    distance: 3000,
     weather: 'good',
     difficulty: 1592, 
     temperature: 5
   },
   {
     location: 'A',
-    distance: 10,
+    distance: 10000,
     weather: 'good',
     difficulty: 112,
     temperature: 18
   },
   {
     location: 'B',
-    distance: 5,
+    distance: 5000,
     weather: 'bad',
     difficulty: 310,
     temperature: 10
   },
   {
     location: 'C',
-    distance: 8,
+    distance: 8000,
     weather: 'good',
     difficulty: 792 ,
     temperature: 5
   },
   {
     location: 'D',
-    distance: 4,
+    distance: 4000,
     weather: 'good',
     difficulty: 1331,
     temperature: 8
@@ -247,16 +261,35 @@ console.log('# raw plans', rawPlans.length);
 // - 2. Only those that have made it back to start? 
 //
 ////////////////////////////////////////////////////////////////////////////////
+
+
+const worldStateMap = new Map(world.nodes.map(n => [n.id, n]));
+
 let rawPlansThatReachedGoal = []
 rawPlansThatReachedGoal = rawPlans.filter(plan => {
   return _.intersection(plan, goals).length === 1
     && starts.includes(_.last(plan));
 });
-console.log('# pruned plans', rawPlansThatReachedGoal.length);
+console.log('# pruned plans (reach goal and home)', rawPlansThatReachedGoal.length);
+
+rawPlansThatReachedGoal = rawPlansThatReachedGoal.filter(plan => {
+  const index = plan.indexOf(d => {
+    return goals.include(d);
+  });
+
+  for (let idx = (index+1); idx < plan.length; idx++) {
+    const ws = worldStateMap.get(plan[idx]);
+    if (ws && ws.heater === 1) {
+      return false;
+    }
+  }
+  return true;
+});
+console.log('# pruned plans (irrelevant payload condition)', rawPlansThatReachedGoal.length);
+
 
 
 /* Score the plans with user criteria */
-const worldStateMap = new Map(world.nodes.map(n => [n.id, n]));
 const NONE = 1.0;
 const AVOIDANCE_EFFECT = 0.8;
 const COMM_EFFECT = 0.8;
@@ -271,7 +304,7 @@ const BASE_SPEED = 3;
 
 
 
-const v_base = 2.0;
+const v_base = 8.0;
 const v_boost = 18.0;
 
 
@@ -308,30 +341,45 @@ const plans = rawPlansThatReachedGoal.map((p, i) => {
     const energyUsage = travelTime * (
       P_base + P_weather * ( weatherValue / W_base) * (1 - ws.boost) + 
       P_boost * ws.boost + 
-      P_payload * (dropped === false ? 1 : 0)+ 
+      P_payload * (dropped === false ? 1 : 0 ) + 
       P_comms * ws.comm + 
-      P_avoid * ws.avoid + 
+      P_avoid * ws.avoidance + 
       c_cond * (ws.temperature - T_payload) * ws.heater
-    ); 
+    ) / 3600; 
 
-    const temperatureDelta = T_payload * ws.heater + (1 - ws.heater) * (ws.tempature - T_payload) * c_cond * travelTime / (c_payload * m_payload)
-    currentTemperature += temperatureDelta;
+    // const temperatureDelta = T_payload * ws.heater + (1 - ws.heater) * (ws.temperature - T_payload) * c_cond * travelTime / (c_payload * m_payload)
+    // currentTemperature += temperatureDelta;
 
-    const difficulty = ws.difficulty * (1 - ws.comm) * (1 - ws.avoidcance) + weatherValue * (1 - ws.boost);
+    // const temperatureDelta = T_payload * ws.heater + (1 - ws.heater) * (ws.temperature - currentTemperature) * c_cond * travelTime / (c_payload * m_payload)
+    // currentTemperature += temperatureDelta;
 
-    if (goals.includes(pid)) {
-      dropped = true;
-    }
+
+    const temperatureDelta = (ws.temperature - currentTemperature) * c_cond * travelTime / (c_payload * m_payload);
+    currentTemperature = (1 - ws.heater) * (currentTemperature + temperatureDelta) + ws.heater * T_payload;
+
+
+    const difficulty = ws.difficulty * (1 - ws.comm) * (1 - ws.avoidance) + weatherValue * (1 - ws.boost);
+
+    // console.log(travelTime, energyUsage, currentTemperature);
 
     // Calculation all done, settle up
     totalTime += travelTime;
     totalEnergy += energyUsage;
     totalDifficulty += difficulty;
 
+    /**
+     * b - battery remaining
+     * t - payload temperature
+    */
     stats.push({
-      payloadTemp: currentTemperature,
+      payloadTemp: dropped ? null : currentTemperature,
       battery: +((E_full - totalEnergy) / E_full).toFixed(2)
     });
+
+    //  Finall compute if we completed the delivery
+    if (goals.includes(pid)) {
+      dropped = true;
+    }
   }
 
   return { 
@@ -339,7 +387,7 @@ const plans = rawPlansThatReachedGoal.map((p, i) => {
     summary: {
       time: +(totalTime.toFixed(0)),
       energy: +(totalEnergy.toFixed(0)),
-      difficulty: +(totalDifficulty.toFixed(0)),
+      diff: +(totalDifficulty.toFixed(0)),
     },
     stats,
     plan: p 
@@ -379,12 +427,15 @@ function* stringifyArray(arr) {
 fs.writeFileSync('./world.json', JSON.stringify(world),  'utf8');
 // fs.writeFileSync('./plans.json', JSON.stringify(plans),  'utf8');
 
-const stream = fs.createWriteStream("data.json");
-for (const chunk of stringifyArray(stringifyArray(plans))) {
+const stream = fs.createWriteStream("./plans.json");
+for (const chunk of stringifyArray(plans)) {
   stream.write(chunk);
 }
 stream.end();
+stream.on("finish", () => {
+  console.log("plans.json written");
+});
 
 fs.writeFileSync('./locations.json', JSON.stringify(locationGraph),  'utf8');
-process.exit()
+// process.exit()
 
