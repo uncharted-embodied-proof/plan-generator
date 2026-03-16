@@ -17,6 +17,21 @@ console.log(`# plans=${plans.length}`);
 console.log('');
 console.groupEnd();
 
+let codeUseCount = 0;
+
+
+// const MODEL = "gemini-1.5-flash";
+// const MODEL = "gemini-2.5-flash"; 
+// const MODEL = "gemini-2.5-flash-lite";
+const MODEL = "gemini-3.1-flash-lite-preview";
+
+// const CODE_MODEL = "gemini-2.5-flash-lite";
+const CODE_MODELS = [
+  "gemini-3-flash-preview",
+  "gemini-2.5-flash-lite"
+];
+
+
 const app = express();
 const port = 8888;
 
@@ -71,8 +86,10 @@ const tools = [
  * Generates JS-code that can be operated on world or plans data structures
 **/
 async function generateSearchCode(query) {
+  codeUseCount ++;
+
   const response = await ai.models.generateContent({
-    model: CODE_MODEL,
+    model: CODE_MODELS[codeUseCount % CODE_MODELS.length],
     config: {
       systemInstruction: `
         You are an expert in javascript coding and json formats. Your job is to generate JS code to evaulate over the following JSONs
@@ -223,13 +240,6 @@ const ai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY,
 });
 
-// const MODEL = "gemini-1.5-flash";
-// const MODEL = "gemini-2.5-flash"; 
-// const MODEL = "gemini-2.5-flash-lite";
-const MODEL = "gemini-3.1-flash-lite-preview";
-
-// const CODE_MODEL = "gemini-2.5-flash-lite";
-const CODE_MODEL = "gemini-3-flash-preview";
 
 
 app.get('/', (req, res) => {
