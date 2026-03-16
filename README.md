@@ -24,13 +24,14 @@ A state is defined as possible internal/external conditions at a given step. For
   "location": "X",
   "distance": 100,
   "weather": "good",
+  "temperature"; 3,
   "difficulty": 10,
   "id": 1
 }
 ```
 
 
-A plan is a listing of world-states to be executed by the operator in order. The summary section provide aggregated user-metrics calculate over each state in the listing.
+A plan is a listing of world-states to be executed by the operator in order. The summary section provide aggregated user-metrics calculate over each state in the listing. The stats section provides cumulative running totals as we traverse the plan from start to finish.
 
 ```
 {
@@ -38,8 +39,13 @@ A plan is a listing of world-states to be executed by the operator in order. The
   "summary": {
     "time": 89,
     "energy": 3330,
-    "difficulty": 96
+    "diff": 96
   },
+  "stats": [
+    { payloadTemp, battery },
+    { payloadTemp, battery },
+    ...
+  ], 
   "plan": [
     1,
     17,
@@ -64,7 +70,7 @@ node ./traverse.js
 
 
 ### Running with chat agent
-Once the above files have been generated, you can chat with an agent to reason over them
+Once the above files have been generated, you can chat with an agent to reason over them.
 
 ```
 node ./server.js
