@@ -389,6 +389,34 @@ const plans = rawPlansThatReachedGoal.map((p, i) => {
 
 
 
+
+// FIXME: Sample on a 2D grid according to metrics
+// Still need to finalize the metrics and thresholds
+let sampledPlans = plans;
+if (process.argv.length === 3) {
+  sampledPlans = [];
+  const size = +(process.argv[2]);
+
+  const minEnergy = Math.min(...plans.map(p => p.summary.energy));
+  const maxEnergy = Math.max(...plans.map(p => p.summary.energy));
+  const minTime = Math.min(...plans.map(p => p.summary.time));
+  const maxTime = Math.max(...plans.map(p => p.summary.time));
+
+  const dupes = new Set();
+
+  plans.forEach(plan => {
+    const x = Math.floor(size * ((plan.summary.time - minTime) / (maxTime - minTime)));
+    const z = Math.floor(size * ((plan.summary.energy - minEnergy) / (maxEnergy - minEnergy)));
+    const key = `${x}:${z}`;
+    if (!dupes.has(key)) {
+      sampledPlans.push(plan);
+      dupes.add(key);
+    }
+  });
+  console.log('# pruned plans (safter grid-based sampling)', sampledPlans.length);
+} 
+
+
 // Build a location topology 
 const locationGraph = {
   nodes: [],
@@ -421,22 +449,19 @@ fs.writeFileSync('./world.json', JSON.stringify(world),  'utf8');
 // fs.writeFileSync('./plans.json', JSON.stringify(plans),  'utf8');
 
 const stream = fs.createWriteStream("./plans.json");
-for (const chunk of stringifyArray(plans)) {
+for (const chunk of stringifyArray(sampledPlans)) {
   stream.write(chunk);
 }
 stream.end();
 stream.on("finish", () => {
   console.log("plans.json written");
 
-  const minEnergy = Math.min(...plans.map(p => p.summary.energy));
-  const maxEnergy = Math.max(...plans.map(p => p.summary.energy));
-
-  const minTime = Math.min(...plans.map(p => p.summary.time));
-  const maxTime = Math.max(...plans.map(p => p.summary.time));
-
-  const minDifficulty = Math.min(...plans.map(p => p.summary.difficulty));
-  const maxDifficulty = Math.max(...plans.map(p => p.summary.difficulty));
-
+  const minEnergy = Math.min(...sampledPlans.map(p => p.summary.energy));
+  const maxEnergy = Math.max(...sampledPlans.map(p => p.summary.energy));
+  const minTime = Math.min(...sampledPlans.map(p => p.summary.time));
+  const maxTime = Math.max(...sampledPlans.map(p => p.summary.time));
+  const minDifficulty = Math.min(...sampledPlans.map(p => p.summary.difficulty));
+  const maxDifficulty = Math.max(...sampledPlans.map(p => p.summary.difficulty));
 
   console.log('');
   console.log('');

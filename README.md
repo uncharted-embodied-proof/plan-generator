@@ -64,7 +64,7 @@ Assume NodeJS is available. This will generate two files
 - locations.json: topologicial graph based on location
 
 ```
-node ./traverse.js
+node ./traverse.js [grid-size]
 ```
 
 
