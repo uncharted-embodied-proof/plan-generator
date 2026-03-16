@@ -11,9 +11,10 @@ const world = JSON.parse(fs.readFileSync('./world.json', 'utf8'));
 const plans = JSON.parse(fs.readFileSync('./plans.json', 'utf8'));
 
 
-console.group('==== server start ===');
+console.group('==== Data Stats ===');
 console.log(`# state=${world.nodes.length}, # edges=${world.edges.length}`);
 console.log(`# plans=${plans.length}`);
+console.log('');
 console.groupEnd();
 
 const app = express();
@@ -141,6 +142,7 @@ async function generateSearchCode(query) {
   const toolResultText = response.text;
   return toolResultText;
 }
+
 
 function runPython(query) {
   return new Promise((resolve, reject) => {
@@ -273,7 +275,11 @@ app.post('/chat', async (req, res) => {
             Do not call another tool unless absolutely necessary.
 
             If the user asked for a specific plan, eg: "show me plan x", and we have an object representation, just interpret it, do not use anotehr tool
-            
+
+
+            !! Important !!
+            For queries unrelated to plans, graphs, navigation, do not use any tools, just reply that the question is outside of your operating parameters.
+
 
             Be concise in your answers unless otherwise noted.
           `,
