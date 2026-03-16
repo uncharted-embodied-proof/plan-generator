@@ -331,6 +331,7 @@ const plans = rawPlansThatReachedGoal.map((p, i) => {
   let dropped = false;
   let currentTemperature = T_payload;
   let stats = [];
+  let conditionViolated = false;
 
   for (const pid of p) {
     const ws = worldStateMap.get(pid);
@@ -347,20 +348,11 @@ const plans = rawPlansThatReachedGoal.map((p, i) => {
       c_cond * (ws.temperature - T_payload) * ws.heater
     ) / 3600; 
 
-    // const temperatureDelta = T_payload * ws.heater + (1 - ws.heater) * (ws.temperature - T_payload) * c_cond * travelTime / (c_payload * m_payload)
-    // currentTemperature += temperatureDelta;
-
-    // const temperatureDelta = T_payload * ws.heater + (1 - ws.heater) * (ws.temperature - currentTemperature) * c_cond * travelTime / (c_payload * m_payload)
-    // currentTemperature += temperatureDelta;
-
-
     const temperatureDelta = (ws.temperature - currentTemperature) * c_cond * travelTime / (c_payload * m_payload);
     currentTemperature = (1 - ws.heater) * (currentTemperature + temperatureDelta) + ws.heater * T_payload;
 
 
     const difficulty = ws.difficulty * (1 - ws.comm) * (1 - ws.avoidance) + weatherValue * (1 - ws.boost);
-
-    // console.log(travelTime, energyUsage, currentTemperature);
 
     // Calculation all done, settle up
     totalTime += travelTime;
@@ -387,7 +379,8 @@ const plans = rawPlansThatReachedGoal.map((p, i) => {
     summary: {
       time: +(totalTime.toFixed(0)),
       energy: +(totalEnergy.toFixed(0)),
-      diff: +(totalDifficulty.toFixed(0)),
+      difficulty: +(totalDifficulty.toFixed(0)),
+      conditionViolated
     },
     stats,
     plan: p 
@@ -434,8 +427,30 @@ for (const chunk of stringifyArray(plans)) {
 stream.end();
 stream.on("finish", () => {
   console.log("plans.json written");
+
+  const minEnergy = Math.min(...plans.map(p => p.summary.energy));
+  const maxEnergy = Math.max(...plans.map(p => p.summary.energy));
+
+  const minTime = Math.min(...plans.map(p => p.summary.time));
+  const maxTime = Math.max(...plans.map(p => p.summary.time));
+
+  const minDifficulty = Math.min(...plans.map(p => p.summary.difficulty));
+  const maxDifficulty = Math.max(...plans.map(p => p.summary.difficulty));
+
+
+  console.log('');
+  console.log('');
+  console.log('=== stats ===');
+  console.log(`Energy: [${minEnergy}, ${maxEnergy}]`);
+  console.log(`Time: [${minTime}, ${maxTime}]`);
+  console.log(`Difficulty:[${minDifficulty}, ${maxDifficulty}]`);
 });
 
 fs.writeFileSync('./locations.json', JSON.stringify(locationGraph),  'utf8');
+
+
+
+
+
 // process.exit()
 

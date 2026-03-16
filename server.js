@@ -108,9 +108,8 @@ async function generateSearchCode(query) {
               difficulty: number
             },
             stats: [
-              { battery, temp },
-              { battery, temp },
-              { battery, temp },
+              { battery: number, payloadTemp: number },
+              { battery: number, payloadTemp: number },
               ...
             ],
             plan: [
@@ -125,7 +124,7 @@ async function generateSearchCode(query) {
         The code should look for plan objects in plans.json if the question is about flight plans/paths
 
         If the operator is asking for a number, eg: "how many ...", "number of ...". Return a short summary.
-        Do not return a list of objects unless explictedly asked to do so.
+        Important!! Do not return a list of objects unless explictedly asked to do so.
 
         Assume you have global variables "world" and "plans' as specified above, return the javascript code
         The last line of the code should be the answer
@@ -179,13 +178,13 @@ async function runTool(name, args) {
       // const fn = new Function(toolResultText + "; return Object.values(this).find(v => typeof v === 'function');")();
       const evalResult = eval(toolResultText);
 
-      // console.log('...........');
-      // console.log(toolResultText);
-      // console.log('');
-      // console.log(evalResult);
-      // console.log('');
-      // console.log('...........');
-      // console.log('');
+      console.log('...........');
+      console.log(toolResultText);
+      console.log('');
+      console.log(evalResult);
+      console.log('');
+      console.log('...........');
+      console.log('');
 
       if (Array.isArray(evalResult)) {
         if (evalResult.length === 0) {
@@ -229,7 +228,8 @@ const ai = new GoogleGenAI({
 // const MODEL = "gemini-2.5-flash-lite";
 const MODEL = "gemini-3.1-flash-lite-preview";
 
-const CODE_MODEL = "gemini-2.5-flash-lite";
+// const CODE_MODEL = "gemini-2.5-flash-lite";
+const CODE_MODEL = "gemini-3-flash-preview";
 
 
 app.get('/', (req, res) => {
@@ -247,7 +247,7 @@ app.post('/chat', async (req, res) => {
   let responseText = '';
 
   console.log('');
-  console.group('processing chat');
+  console.group('>> processing chat');
   console.log(`query: ${message}`);
 
   const contents = [...history, { role: "user", parts: [{ text: message }] }];
@@ -265,9 +265,9 @@ app.post('/chat', async (req, res) => {
           systemInstruction: `
             You are an expert navigator trained to help drone operators solve navigation problems.
 
-            We are working with the following constraints:
-            - Any plans where battery falls below 0.1 are potentially invalid
-            - Any plans with difficulty more than 100 units are potentially invalid
+            We are working with the following constraints, thus making the plans potentially invalid:
+            - Any plans where battery falls below 0.1
+            - Any plans with difficulty more than 800 
 
 
             !! Important !!
@@ -275,6 +275,10 @@ app.post('/chat', async (req, res) => {
             Do not call another tool unless absolutely necessary.
 
             If the user asked for a specific plan, eg: "show me plan x", and we have an object representation, just interpret it, do not use anotehr tool
+
+
+            !! Important !!
+            Do not interpret the query as "returning all plans", anything that require logic logical filtering should use the "generate_search_code" tool
 
 
             !! Important !!
@@ -296,7 +300,7 @@ app.post('/chat', async (req, res) => {
       const toolCall = parts.find(p => p.functionCall);
       if (toolCall) {
         const { name, args } = toolCall.functionCall;
-        console.log('debugging', name, args);
+        console.log('tool needed', name, args);
         const result = await runTool(name, args);
         contents.push(candidate.content);
 

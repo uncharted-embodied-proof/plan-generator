@@ -3,17 +3,44 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chat with Gemini</title>
+    <title>Nav Wizard</title>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
 
     <style>
         body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; }
-        #chat-container { width: 80%; max-width: 800px; border: 1px solid #ccc; padding: 5px; border-radius: 5px; }
-        #chat-history { height: 601px; overflow-y: scroll; border-bottom: 1px solid #ccc; margin-bottom: 10px; padding: 5px; }
+        #chat-container { 
+          width: 80%; 
+          max-width: 800px; 
+          border: 1px solid #ddd; 
+          padding: 5px; 
+          border-radius: 5px; 
+        }
+        #chat-history { 
+          height: 600px; 
+          overflow-y: scroll; 
+          border-bottom: 1px solid #ddd; 
+          margin-bottom: 10px; 
+          padding: 5px; 
+        }
         .message { margin-bottom: 5px; }
-        .user-message { text-align: right; color: blue; background: #ddf; padding: 0.10rem 0.5rem; border-radius: 0.25rem }
-        .bot-message { text-align: left; color: #234; background: #eee; padding: 0.10rem 0.5rem; border-radius: 0.25rem }
+
+        .user-message { 
+          text-align: right; 
+          color: blue; 
+          background: #ddf; 
+          padding: 0.10rem 0.5rem; 
+          border-radius: 0.25rem ;
+          margin-left: 1.5rem;
+        }
+        .bot-message { 
+          text-align: left; 
+          color: #234; 
+          background: #eee; 
+          padding: 0.10rem 0.5rem; 
+          border-radius: 0.25rem ;
+          margin-right: 1.5rem;
+        }
         #input-area { display: flex; width: 100%; }
         #message-input { flex-grow: 1; padding: 5px; }
         #send-button { padding: 5px 10px; }
@@ -40,6 +67,9 @@
         let conversationHistory = [];
 
 
+        /**
+         * D3 Gen force-directed graph
+        **/
         function generateGraph(world, topIds = [], bottomIds = []) {
           const width = 250;
           const height = 450;
@@ -70,8 +100,10 @@
               .on("end", dragended));
 
           nodeGroup.append("circle")
-            .attr("r", 15)
-            .attr("fill", "#ccc");
+            .attr("r", 17)
+            .attr("fill", "#ccc")
+            .attr("stroke", "#fff")
+            .attr("stroke-width", 3);
 
           nodeGroup.append("text")
             .text(d => d.id)
