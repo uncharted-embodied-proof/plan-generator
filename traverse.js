@@ -374,6 +374,7 @@ const plans = rawPlansThatReachedGoal.map((p, i) => {
     }
   }
 
+  // FIXME: Need to finalize the metrics and thresholds/constraints
   return { 
     id: i, 
     summary: {
@@ -389,19 +390,18 @@ const plans = rawPlansThatReachedGoal.map((p, i) => {
 
 
 
-
-// FIXME: Sample on a 2D grid according to metrics
-// Still need to finalize the metrics and thresholds
+// Sample on a 2D grid according to metrics
 let sampledPlans = plans;
 if (process.argv.length === 3) {
   sampledPlans = [];
-  const size = +(process.argv[2]);
+  let size = +(process.argv[2]);
+
+  size = Math.min(1000, size);
 
   const minEnergy = Math.min(...plans.map(p => p.summary.energy));
   const maxEnergy = Math.max(...plans.map(p => p.summary.energy));
   const minTime = Math.min(...plans.map(p => p.summary.time));
   const maxTime = Math.max(...plans.map(p => p.summary.time));
-
   const dupes = new Set();
 
   plans.forEach(plan => {
@@ -413,7 +413,7 @@ if (process.argv.length === 3) {
       dupes.add(key);
     }
   });
-  console.log('# pruned plans (safter grid-based sampling)', sampledPlans.length);
+  console.log('# pruned plans (after grid-based sampling)', sampledPlans.length);
 } 
 
 
@@ -445,8 +445,8 @@ function* stringifyArray(arr) {
 }
 
 
+
 fs.writeFileSync('./world.json', JSON.stringify(world),  'utf8');
-// fs.writeFileSync('./plans.json', JSON.stringify(plans),  'utf8');
 
 const stream = fs.createWriteStream("./plans.json");
 for (const chunk of stringifyArray(sampledPlans)) {
@@ -454,8 +454,6 @@ for (const chunk of stringifyArray(sampledPlans)) {
 }
 stream.end();
 stream.on("finish", () => {
-  console.log("plans.json written");
-
   const minEnergy = Math.min(...sampledPlans.map(p => p.summary.energy));
   const maxEnergy = Math.max(...sampledPlans.map(p => p.summary.energy));
   const minTime = Math.min(...sampledPlans.map(p => p.summary.time));
@@ -464,6 +462,7 @@ stream.on("finish", () => {
   const maxDifficulty = Math.max(...sampledPlans.map(p => p.summary.difficulty));
 
   console.log('');
+  console.log("plans.json written");
   console.log('');
   console.log('=== stats ===');
   console.log(`Energy: [${minEnergy}, ${maxEnergy}]`);
@@ -472,10 +471,4 @@ stream.on("finish", () => {
 });
 
 fs.writeFileSync('./locations.json', JSON.stringify(locationGraph),  'utf8');
-
-
-
-
-
-// process.exit()
 
