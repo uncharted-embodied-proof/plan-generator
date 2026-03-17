@@ -19,7 +19,6 @@ console.groupEnd();
 
 let codeUseCount = 0;
 
-
 // const MODEL = "gemini-1.5-flash";
 // const MODEL = "gemini-2.5-flash"; 
 // const MODEL = "gemini-2.5-flash-lite";
@@ -217,8 +216,8 @@ async function runTool(name, args) {
           === Tool logic ===
           ${toolResultText}
 
-          === Tool answer === 
-          ${JSON.stringify(evalResult)}
+          === Tool answer (Long answers may be cut off) === 
+          ${JSON.stringify(evalResult).substring(0, 2500)}
         `
       };
     }

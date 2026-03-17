@@ -29,16 +29,6 @@ function cartesianObject(obj) {
   }, [{}]);
 }
 
-function isEqualNoId(obj1, obj2) {
-  const keys1 = Object.keys(obj1).filter(k => k !== 'id');
-  const keys2 = Object.keys(obj2).filter(k => k !== 'id');
-
-  if (keys1.length !== keys2.length) return false;
-
-  return keys1.every(key => obj1[key] === obj2[key]);
-}
-
-
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -46,23 +36,12 @@ function isEqualNoId(obj1, obj2) {
 ////////////////////////////////////////////////////////////////////////////////
 const NUM_STEPS = 5;
 
-
 const model = {
   comm: [1, 0],
   avoidance: [1, 0],
   boost: [1, 0],
   heater: [1, 0],
 };
-
-
-/*
-const model = {
-  comm: [0],
-  avoidance: [0],
-  boost: [1],
-  heater: [0],
-};
-*/
 
 
 const zones = [
@@ -174,10 +153,8 @@ const world = { nodes: worldStates, edges: worldEdges };
 console.log('world nodes ', world.nodes.length);
 console.log('world edges', world.edges.length);
 
-
 const starts = world.nodes.filter(n => n.location === 'X').map(n => n.id);
 const goals = world.nodes.filter(n => n.location === 'Y').map(n => n.id);
-
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -261,7 +238,6 @@ console.log('# raw plans', rawPlans.length);
 // - 2. Only those that have made it back to start? 
 //
 ////////////////////////////////////////////////////////////////////////////////
-
 
 const worldStateMap = new Map(world.nodes.map(n => [n.id, n]));
 
@@ -435,6 +411,10 @@ zones.forEach(z => {
 });
 
 
+
+////////////////////////////////////////////////////////////////////////////////
+// Write output
+////////////////////////////////////////////////////////////////////////////////
 function* stringifyArray(arr) {
   yield "[";
   for (let i = 0; i < arr.length; i++) {
@@ -443,8 +423,6 @@ function* stringifyArray(arr) {
   }
   yield "]";
 }
-
-
 
 fs.writeFileSync('./world.json', JSON.stringify(world),  'utf8');
 
