@@ -122,7 +122,15 @@ async function generateSearchCode(query) {
             summary: {
               time: number,
               energy: number,
-              difficulty: number
+              difficulty: number,
+              deliveryTime: number,
+              deliveryMargin: number,
+              payloadDeliveryTimeSafety: number,
+              payloadSafety: number,
+              droneSafety: number,
+              routeSafety: number,
+              assetSafety: number,
+              patientSafety: number
             },
             stats: [
               { battery: number, payloadTemp: number },
@@ -135,6 +143,8 @@ async function generateSearchCode(query) {
           },
           ...
         ]
+
+
         
 
         The code should look for node objects in world.json if the question is about the world. 
@@ -277,7 +287,19 @@ app.post('/chat', async (req, res) => {
 
             We are working with the following constraints, thus making the plans potentially invalid:
             - Any plans where battery falls below 0.1
-            - Any plans with difficulty more than 800 
+            - Any plans with negative deliveryMargin
+
+
+            The plans are evaluated based on a hierarchial mental model want is deemed to be important for the mission, with the bottom tiers of 
+            the mental model mapping back to the drone's physical states.
+
+            The mental model is summarized below:
+            - patientSafety depends on payloadSafety and payloadDeliveryTimeSafety
+            - assetSafety depends on droneSafety and routeSafety
+            - routeSafety depends on droneTemperatureLoad, droneWindLoad, and difficulty
+            - droneSafety depends on droneBatteryLoad and dronePowerLoad
+            - payloadSafety depends on payloadTemperatureLoad
+            - payloadDeliveryTimeSafety depends on deliveryTime
 
 
             !! Important !!

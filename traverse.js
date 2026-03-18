@@ -30,7 +30,6 @@ function cartesianObject(obj) {
 }
 
 
-
 ////////////////////////////////////////////////////////////////////////////////
 // World specification
 ////////////////////////////////////////////////////////////////////////////////
@@ -476,10 +475,6 @@ if (process.argv.length === 3) {
   console.log('# pruned plans (after grid-based sampling)', sampledPlans.length);
 } 
 
-for (let i = 4000; i < 4100; i++) {
-  console.log(sampledPlans[i].summary);
-}
-
 
 // Build a location topology 
 const locationGraph = {
@@ -527,6 +522,10 @@ stream.on("finish", () => {
   const minDifficulty = Math.min(...sampledPlans.map(p => p.summary.difficulty));
   const maxDifficulty = Math.max(...sampledPlans.map(p => p.summary.difficulty));
 
+  const minMargin = Math.min(...sampledPlans.map(p => p.summary.deliveryMargin));
+  const maxMargin = Math.max(...sampledPlans.map(p => p.summary.deliveryMargin));
+
+
   console.log('');
   console.log("plans.json written");
   console.log('');
@@ -534,7 +533,7 @@ stream.on("finish", () => {
   console.log(`Energy: [${minEnergy}, ${maxEnergy}]`);
   console.log(`Time: [${minTime}, ${maxTime}]`);
   console.log(`Difficulty:[${minDifficulty}, ${maxDifficulty}]`);
+  console.log(`Delivery Margin:[${minMargin}, ${maxMargin}]`);
 });
-
 fs.writeFileSync('./locations.json', JSON.stringify(locationGraph),  'utf8');
 
