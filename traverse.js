@@ -53,13 +53,6 @@ const zones = [
     temperature: 18
   },
   {
-    location: 'Y',
-    distance: 3000,
-    weather: 'good',
-    difficulty: 1592, 
-    temperature: 5
-  },
-  {
     location: 'A',
     distance: 10000,
     weather: 'good',
@@ -86,6 +79,13 @@ const zones = [
     weather: 'good',
     difficulty: 1331,
     temperature: 8
+  },
+  {
+    location: 'Y',
+    distance: 3000,
+    weather: 'good',
+    difficulty: 1592, 
+    temperature: 5
   }
 ];
 
@@ -266,73 +266,117 @@ console.log('# pruned plans (irrelevant payload condition)', rawPlansThatReached
 
 
 /* Score the plans with user criteria */
-const NONE = 1.0;
-const AVOIDANCE_EFFECT = 0.8;
-const COMM_EFFECT = 0.8;
-
-const ENERGEY_PER_UNIT  = 2;
-const PAYLOAD_ENERGY_PER_UNIT = 0.2;
-const COMM_ENERGY_PER_UNIT = 0.1;
-const AVOIDANCE_ENERGY_PER_UNIT = 0.1;
-
-const BOOST = 1.5;
-const BASE_SPEED = 3;
-
-
-
-const v_base = 8.0;
-const v_boost = 18.0;
-
-
 const P_base = 1000;
 const P_boost = 200;
 const P_payload = 1000;
 const P_comms = 8;
 const P_avoid = 20;
 const P_weather = 237;
-const E_full = 780;
+const P_max = 6635;
 
-
-const T_payload = 4.0;
-const W_base = 2000;
+const T_max = 40;
+const T_min = -10;
 const c_cond = 0.2;
 const c_payload = 4200;
+const v_base = 10.0;
+const v_boost = 18.0;
+const v_ascent_max = 5.0;
+const v_wind_max = 8.0;
+
+const E_full = 780;
+const E_empty = 0;
+
+const p_preserve = 10;
 const m_payload = 1.5;
+
+const T_payload_mid = 4.0;
+const T_payload_max = 6.0;
+const T_payload_min = 2.0;
+
+
+const t_payload_max = 1000;
+
+
+
+const W_base = 2000;
+
+
+
+const SAFETYFUNC = (values, times, totalTime) => {
+  let weightedV = 0;
+  for (let i = 0; i < values.length; i++) {
+    const expV = (Math.exp(values[i]) - 1) / (Math.exp(1) - 1);
+    weightedV += expV * (times[i] / totalTime)
+  }
+  return Math.max(0, 1 - weightedV);
+}
+
 
 const plans = rawPlansThatReachedGoal.map((p, i) => {
   let totalDifficulty = 0;
   let totalEnergy = 0;
   let totalTime = 0;
+  let deliveryTime = 0;
 
   let dropped = false;
-  let currentTemperature = T_payload;
+  let currentTemperature = T_payload_mid;
   let stats = [];
-  let conditionViolated = false;
 
-  for (const pid of p) {
+  // for (const pid of p) {
+  for (let i = 0; i < p.length; i++) {
+    const pid = p[i];
+
     const ws = worldStateMap.get(pid);
+    const prevWs = i === 0 ? ws : worldStateMap.get(p[i-1]);
+
+
+    const v_wind_zone = (ws.weather === 'good' ? 0.3 : 7.0);
+    const f_boost = ws.boost;
+    const f_comms = ws.comm;
+    const f_avoid = ws.avoidance;
+    const f_cond = ws.heater;
+    const f_payload = dropped === true ? 0 : 1;
+    const T_zone = ws.temperature;
+
+
     const travelTime = ws.distance / ((1 - ws.boost) * v_base + ws.boost * v_boost);
 
-    const weatherValue = (ws.weather === 'good' ? 0 : 2000);
+    const powerConsumption = (
+      P_base +
+      P_weather * (v_wind_zone / v_wind_max) * (1 - f_boost) +
+      P_boost * f_boost + 
+      P_payload * f_payload +
+      P_comms * f_comms + 
+      P_avoid * f_avoid +
+      c_cond * (T_zone - currentTemperature) * f_cond
+    );
 
-    const energyUsage = travelTime * (
-      P_base + P_weather * ( weatherValue / W_base) * (1 - ws.boost) + 
-      P_boost * ws.boost + 
-      P_payload * (dropped === false ? 1 : 0 ) + 
-      P_comms * ws.comm + 
-      P_avoid * ws.avoidance + 
-      c_cond * (ws.temperature - T_payload) * ws.heater
-    ) / 3600; 
+    const energyConsumption = powerConsumption * travelTime / 3600;
 
-    const temperatureDelta = (ws.temperature - currentTemperature) * c_cond * travelTime / (c_payload * m_payload);
-    currentTemperature = (1 - ws.heater) * (currentTemperature + temperatureDelta) + ws.heater * T_payload;
+    const batteryLevel = (E_full - energyConsumption) / E_full;
+
+    const droneTemperatureLoad = (T_zone - 0.5 * (T_max + T_min)) / (0.5 * (T_max - T_min));
+
+    const dronePowerLoad = powerConsumption / P_max;
+
+    const droneBatteryLoad = batteryLevel;
+
+    const droneWindLoad = v_wind_zone / v_wind_max;
+
+    const v_ascent = Math.abs(ws.difficulty - prevWs.difficulty) / travelTime;
+    const difficulty = v_ascent / v_ascent_max;
 
 
-    const difficulty = ws.difficulty * (1 - ws.comm) * (1 - ws.avoidance) + weatherValue * (1 - ws.boost);
+    const deltaPayloadTemp = (ws.temperature - currentTemperature) * c_cond * travelTime / (c_payload * m_payload)
+    currentTemperature = (1 - f_cond) * deltaPayloadTemp + currentTemperature;
+
+
+    const payloadTemperatureLoad = (currentTemperature - T_payload_mid) / (0.5 * (T_payload_max - T_payload_min))
 
     // Calculation all done, settle up
+    deliveryTime += (travelTime * f_payload);
     totalTime += travelTime;
-    totalEnergy += energyUsage;
+    totalEnergy += energyConsumption;
     totalDifficulty += difficulty;
 
     /**
@@ -340,8 +384,16 @@ const plans = rawPlansThatReachedGoal.map((p, i) => {
      * t - payload temperature
     */
     stats.push({
-      payloadTemp: dropped ? null : currentTemperature,
-      battery: +((E_full - totalEnergy) / E_full).toFixed(2)
+      travelTime: +travelTime.toFixed(2),
+      payloadTemp: dropped ? null : +currentTemperature.toFixed(2),
+      battery: +((E_full - totalEnergy) / E_full).toFixed(2),
+
+      payloadTemperatureLoad: +payloadTemperatureLoad.toFixed(2),
+      droneBatteryLoad: +droneBatteryLoad.toFixed(2),
+      dronePowerLoad: +dronePowerLoad.toFixed(2),
+      droneWindLoad: +droneWindLoad.toFixed(2),
+      droneTemperatureLoad: +droneTemperatureLoad.toFixed(2),
+      difficulty: +difficulty.toFixed(2),
     });
 
     //  Finall compute if we completed the delivery
@@ -350,14 +402,46 @@ const plans = rawPlansThatReachedGoal.map((p, i) => {
     }
   }
 
+
+  const zoneTimes = stats.map(d => d.travelTime);
+
+  const payloadSafety = SAFETYFUNC(stats.map(d => d.payloadTemperatureLoad), zoneTimes, totalTime);
+
+
+  let payloadDeliveryTimeSafety = (Math.exp(deliveryTime / totalTime)  - 1) / (Math.exp(1) - 1)
+  payloadDeliveryTimeSafety = Math.max(0, 1 - payloadDeliveryTimeSafety);
+
+  const droneSafety = 0.5 * (
+    SAFETYFUNC(stats.map(d => d.droneBatteryLoad), zoneTimes, totalTime) +
+    SAFETYFUNC(stats.map(d => d.dronePowerLoad), zoneTimes, totalTime)
+  );
+
+  const routeSafety = 0.3333 * (
+    SAFETYFUNC(stats.map(d => d.droneTemperatureLoad), zoneTimes, totalTime) +
+    SAFETYFUNC(stats.map(d => d.droneWindLoad), zoneTimes, totalTime) +
+    SAFETYFUNC(stats.map(d => d.difficulty), zoneTimes, totalTime)
+  );
+
+  const assetSafety = 0.5 * ( droneSafety + routeSafety);
+  const patientSafety = 0.5 * (payloadSafety + payloadDeliveryTimeSafety);
+
+
   // FIXME: Need to finalize the metrics and thresholds/constraints
   return { 
     id: i, 
     summary: {
       time: +(totalTime.toFixed(0)),
       energy: +(totalEnergy.toFixed(0)),
-      difficulty: +(totalDifficulty.toFixed(0)),
-      conditionViolated
+      deliveryTime: +(deliveryTime.toFixed(0)),
+      deliveryMargin: +(t_payload_max - deliveryTime).toFixed(0),
+      payloadDeliveryTimeSafety,
+      payloadSafety,
+      droneSafety,
+      routeSafety,
+      assetSafety,
+      patientSafety,
+
+      difficulty: +(totalDifficulty.toFixed(0))
     },
     stats,
     plan: p 
@@ -391,6 +475,10 @@ if (process.argv.length === 3) {
   });
   console.log('# pruned plans (after grid-based sampling)', sampledPlans.length);
 } 
+
+for (let i = 4000; i < 4100; i++) {
+  console.log(sampledPlans[i].summary);
+}
 
 
 // Build a location topology 
