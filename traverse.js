@@ -449,19 +449,25 @@ const plans = rawPlansThatReachedGoal.map((p, i) => {
 let sampledPlans = plans;
 if (process.argv.length === 3) {
   sampledPlans = [];
-  let size = +(process.argv[2]);
 
-  size = Math.min(1000, size);
+  let [size, xattr, zattr] = process.argv[2].split(':');
+  if (!size || !xattr || !zattr) {
+    console.log('Usage: node ./traverse.js [size:xattr:zattr]'); 
+    process.exit(-1);
+  }
+  size = Math.min(1000, +size);
 
-  const minEnergy = Math.min(...plans.map(p => p.summary.energy));
-  const maxEnergy = Math.max(...plans.map(p => p.summary.energy));
-  const minTime = Math.min(...plans.map(p => p.summary.time));
-  const maxTime = Math.max(...plans.map(p => p.summary.time));
+  const minEnergy = Math.min(...plans.map(p => p.summary[xattr]));
+  const maxEnergy = Math.max(...plans.map(p => p.summary[xattr]));
+  const minTime = Math.min(...plans.map(p => p.summary[zattr]));
+  const maxTime = Math.max(...plans.map(p => p.summary[zattr]));
   const dupes = new Set();
 
+  console.log('');
+  console.log(`Grid sampling ${size}x${size} with xattr=${xattr} zattr=${zattr}`);
   plans.forEach(plan => {
-    const x = Math.floor(size * ((plan.summary.time - minTime) / (maxTime - minTime)));
-    const z = Math.floor(size * ((plan.summary.energy - minEnergy) / (maxEnergy - minEnergy)));
+    const x = Math.floor(size * ((plan.summary[zattr] - minTime) / (maxTime - minTime)));
+    const z = Math.floor(size * ((plan.summary[xattr] - minEnergy) / (maxEnergy - minEnergy)));
     const key = `${x}:${z}`;
     if (!dupes.has(key)) {
       sampledPlans.push(plan);
