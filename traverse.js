@@ -93,7 +93,6 @@ const zones = [
 function getNextLocations(v) {
   if (v === 'X') return ['A', 'B', 'C', 'D'];
   if (v === 'Y') return ['A', 'B', 'C', 'D'];
-
   if (v === 'A') return ['Y', 'X'];
   if (v === 'B') return ['Y', 'X'];
   if (v === 'C') return ['Y', 'X'];
@@ -220,8 +219,8 @@ function traverseGraph(world, startId, k) {
   return results;
 }
 
-console.log('start ids', starts);
-console.log('goal ids', goals);
+console.log('Start ids:', starts);
+console.log('Goal ids:', goals);
 
 let rawPlans = [];
 starts.forEach(sid => {
@@ -230,6 +229,7 @@ starts.forEach(sid => {
 });
 console.log('# raw plans', rawPlans.length);
 
+
 ////////////////////////////////////////////////////////////////////////////////
 // Prune irrelevant plans to make results smaller
 //
@@ -237,7 +237,6 @@ console.log('# raw plans', rawPlans.length);
 // - 2. Only those that have made it back to start? 
 //
 ////////////////////////////////////////////////////////////////////////////////
-
 const worldStateMap = new Map(world.nodes.map(n => [n.id, n]));
 
 let rawPlansThatReachedGoal = []
@@ -297,9 +296,6 @@ const t_payload_max = 1000;
 
 
 
-const W_base = 2000;
-
-
 
 const SAFETYFUNC = (values, times, totalTime) => {
   let weightedV = 0;
@@ -327,7 +323,6 @@ const plans = rawPlansThatReachedGoal.map((p, i) => {
 
     const ws = worldStateMap.get(pid);
     const prevWs = i === 0 ? ws : worldStateMap.get(p[i-1]);
-
 
     const v_wind_zone = (ws.weather === 'good' ? 0.3 : 7.0);
     const f_boost = ws.boost;
@@ -363,7 +358,7 @@ const plans = rawPlansThatReachedGoal.map((p, i) => {
     const droneWindLoad = v_wind_zone / v_wind_max;
 
     const v_ascent = Math.abs(ws.difficulty - prevWs.difficulty) / travelTime;
-    const difficulty = v_ascent / v_ascent_max;
+    const difficulty = (v_ascent / v_ascent_max) * (1 - f_avoid);
 
 
     const deltaPayloadTemp = (ws.temperature - currentTemperature) * c_cond * travelTime / (c_payload * m_payload)
@@ -401,27 +396,23 @@ const plans = rawPlansThatReachedGoal.map((p, i) => {
     }
   }
 
-
   const zoneTimes = stats.map(d => d.travelTime);
-
   const payloadSafety = SAFETYFUNC(stats.map(d => d.payloadTemperatureLoad), zoneTimes, totalTime);
 
 
   let payloadDeliveryTimeSafety = (Math.exp(deliveryTime / totalTime)  - 1) / (Math.exp(1) - 1)
   payloadDeliveryTimeSafety = Math.max(0, 1 - payloadDeliveryTimeSafety);
 
-  const droneSafety = 0.5 * (
-    SAFETYFUNC(stats.map(d => d.droneBatteryLoad), zoneTimes, totalTime) +
-    SAFETYFUNC(stats.map(d => d.dronePowerLoad), zoneTimes, totalTime)
-  );
+  const droneBatterySafety = SAFETYFUNC(stats.map(d => d.droneBatteryLoad), zoneTimes, totalTime); 
+  const dronePowerSafety = SAFETYFUNC(stats.map(d => d.dronePowerLoad), zoneTimes, totalTime);
+  const droneSafety = 0.5 * (droneBatterySafety + dronePowerSafety);
 
-  const routeSafety = 0.3333 * (
-    SAFETYFUNC(stats.map(d => d.droneTemperatureLoad), zoneTimes, totalTime) +
-    SAFETYFUNC(stats.map(d => d.droneWindLoad), zoneTimes, totalTime) +
-    SAFETYFUNC(stats.map(d => d.difficulty), zoneTimes, totalTime)
-  );
+  const temperatureSafety = SAFETYFUNC(stats.map(d => d.droneTemperatureLoad), zoneTimes, totalTime); 
+  const ascentSafety = SAFETYFUNC(stats.map(d => d.difficulty), zoneTimes, totalTime);
+  const windSafety = SAFETYFUNC(stats.map(d => d.droneWindLoad), zoneTimes, totalTime); 
+  const routeSafety = 0.3333 * (temperatureSafety + windSafety + ascentSafety);
 
-  const assetSafety = 0.5 * ( droneSafety + routeSafety);
+  const assetSafety = 0.5 * (droneSafety + routeSafety);
   const patientSafety = 0.5 * (payloadSafety + payloadDeliveryTimeSafety);
 
 
@@ -436,11 +427,16 @@ const plans = rawPlansThatReachedGoal.map((p, i) => {
       payloadDeliveryTimeSafety,
       payloadSafety,
       droneSafety,
+      dronePowerSafety,
+      droneBatterySafety,
       routeSafety,
+      temperatureSafety,
+      ascentSafety,
+      windSafety,
       assetSafety,
       patientSafety,
 
-      difficulty: +(totalDifficulty.toFixed(0))
+      difficulty: +(totalDifficulty.toFixed(2))
     },
     stats,
     plan: p 
@@ -525,15 +521,31 @@ stream.on("finish", () => {
   const minMargin = Math.min(...sampledPlans.map(p => p.summary.deliveryMargin));
   const maxMargin = Math.max(...sampledPlans.map(p => p.summary.deliveryMargin));
 
+  const minAssetSafety = Math.min(...sampledPlans.map(p => p.summary.assetSafety));
+  const maxAssetSafety = Math.max(...sampledPlans.map(p => p.summary.assetSafety));
+
+  const minPatientSafety = Math.min(...sampledPlans.map(p => p.summary.patientSafety));
+  const maxPatientSafety = Math.max(...sampledPlans.map(p => p.summary.patientSafety));
+
+  const minDroneSafety = Math.min(...sampledPlans.map(p => p.summary.droneSafety));
+  const maxDroneSafety = Math.max(...sampledPlans.map(p => p.summary.droneSafety));
+
 
   console.log('');
   console.log("plans.json written");
   console.log('');
   console.log('=== stats ===');
-  console.log(`Energy: [${minEnergy}, ${maxEnergy}]`);
-  console.log(`Time: [${minTime}, ${maxTime}]`);
+  console.log(`Energy Used: [${minEnergy}, ${maxEnergy}]`);
+  console.log(`Time Used: [${minTime}, ${maxTime}]`);
   console.log(`Difficulty:[${minDifficulty}, ${maxDifficulty}]`);
   console.log(`Delivery Margin:[${minMargin}, ${maxMargin}]`);
+  console.log(`Asset Safety:[${minAssetSafety}, ${maxAssetSafety}]`);
+  console.log(`Patient Safety:[${minPatientSafety}, ${maxPatientSafety}]`);
+  console.log(`Drone Safety:[${minDroneSafety}, ${maxDroneSafety}]`);
+
+  // const test = new Set(sampledPlans.map(p => p.summary.difficulty));
+  // console.log(test);
+
 });
 fs.writeFileSync('./locations.json', JSON.stringify(locationGraph),  'utf8');
 
