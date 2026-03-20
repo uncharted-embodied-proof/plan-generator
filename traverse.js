@@ -444,7 +444,7 @@ const plans = rawPlansThatReachedGoal.map((p, i) => {
       ascentSafety,
       windSafety,
       assetSafety,
-      patientSurvivial: patientSafety,
+      patientSurvival: patientSafety,
       energyReserve: +((E_full - totalEnergy) / E_full).toFixed(2),
 
       totalTurbo,
