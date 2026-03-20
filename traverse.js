@@ -38,8 +38,8 @@ const NUM_STEPS = 5;
 const model = {
   comm: [1, 0],
   avoidance: [1, 0],
-  boost: [1, 0],
-  heater: [1, 0],
+  turbo: [1, 0],
+  cond: [1, 0],
 };
 
 
@@ -253,7 +253,7 @@ rawPlansThatReachedGoal = rawPlansThatReachedGoal.filter(plan => {
 
   for (let idx = (index+1); idx < plan.length; idx++) {
     const ws = worldStateMap.get(plan[idx]);
-    if (ws && ws.heater === 1) {
+    if (ws && ws.cond === 1) {
       return false;
     }
   }
@@ -317,6 +317,11 @@ const plans = rawPlansThatReachedGoal.map((p, i) => {
   let currentTemperature = T_payload_mid;
   let stats = [];
 
+  let totalComm = 0;
+  let totalAvoid = 0;
+  let totalCond = 0;
+  let totalTurbo = 0;
+
   // for (const pid of p) {
   for (let i = 0; i < p.length; i++) {
     const pid = p[i];
@@ -325,15 +330,20 @@ const plans = rawPlansThatReachedGoal.map((p, i) => {
     const prevWs = i === 0 ? ws : worldStateMap.get(p[i-1]);
 
     const v_wind_zone = (ws.weather === 'good' ? 0.3 : 7.0);
-    const f_boost = ws.boost;
+    const f_boost = ws.turbo;
     const f_comms = ws.comm;
     const f_avoid = ws.avoidance;
-    const f_cond = ws.heater;
+    const f_cond = ws.cond;
     const f_payload = dropped === true ? 0 : 1;
     const T_zone = ws.temperature;
 
+    totalTurbo += f_boost;
+    totalAvoid += f_avoid;
+    totalCond += f_cond;
+    totalComm += f_comms;
 
-    const travelTime = ws.distance / ((1 - ws.boost) * v_base + ws.boost * v_boost);
+
+    const travelTime = ws.distance / ((1 - ws.turbo) * v_base + ws.turbo* v_boost);
 
     const powerConsumption = (
       P_base +
@@ -423,9 +433,9 @@ const plans = rawPlansThatReachedGoal.map((p, i) => {
       time: +(totalTime.toFixed(0)),
       energy: +(totalEnergy.toFixed(0)),
       deliveryTime: +(deliveryTime.toFixed(0)),
-      deliveryMargin: +(t_payload_max - deliveryTime).toFixed(0),
+      deliveryTimeMargin: +(t_payload_max - deliveryTime).toFixed(0),
       payloadDeliveryTimeSafety,
-      payloadSafety,
+      bloodIntegrity: payloadSafety,
       droneSafety,
       dronePowerSafety,
       droneBatterySafety,
@@ -434,7 +444,17 @@ const plans = rawPlansThatReachedGoal.map((p, i) => {
       ascentSafety,
       windSafety,
       assetSafety,
-      patientSafety,
+      patientSurvivial: patientSafety,
+      energyReserve: +((E_full - totalEnergy) / E_full).toFixed(2),
+
+      totalTurbo,
+      totalAvoid,
+      totalCond,
+      totalComm,
+      percentTurbo: totalTurbo / p.length,
+      percentAvoid: totalAvoid / p.length,
+      percentCond: totalCond / p.length,
+      percentComm: totalComm / p.length,
 
       difficulty: +(totalDifficulty.toFixed(2))
     },
@@ -530,8 +550,8 @@ stream.on("finish", () => {
   const minAssetSafety = Math.min(...sampledPlans.map(p => p.summary.assetSafety));
   const maxAssetSafety = Math.max(...sampledPlans.map(p => p.summary.assetSafety));
 
-  const minPatientSafety = Math.min(...sampledPlans.map(p => p.summary.patientSafety));
-  const maxPatientSafety = Math.max(...sampledPlans.map(p => p.summary.patientSafety));
+  const minPatientSafety = Math.min(...sampledPlans.map(p => p.summary.patientSurvivial));
+  const maxPatientSafety = Math.max(...sampledPlans.map(p => p.summary.patientSurvivial));
 
   const minDroneSafety = Math.min(...sampledPlans.map(p => p.summary.droneSafety));
   const maxDroneSafety = Math.max(...sampledPlans.map(p => p.summary.droneSafety));
@@ -549,6 +569,8 @@ stream.on("finish", () => {
   console.log(`Patient Safety:[${minPatientSafety}, ${maxPatientSafety}]`);
   console.log(`Drone Safety:[${minDroneSafety}, ${maxDroneSafety}]`);
 
+  console.log(sampledPlans[222]);
+  printPlan(sampledPlans[222], world.nodes);
   // const test = new Set(sampledPlans.map(p => p.summary.difficulty));
   // console.log(test);
 
