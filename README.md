@@ -1,16 +1,18 @@
 ## Plan and state generator
-Provides a script that generates possible world-graph, along with listing viable plans.
+This repo provides two things:
+- A script that generates possible world-graph, along with listing viable plans (a listing of traversed states and summarized stats).
+- A simple UI-interface to chat and reaqson about the generated files
 
-Provides a simple interface to chat about the generated files
 
 ### Setup
-For file generation:
 - Run `npm install`
-
-For running the server we need python as well:
 - Run `pip install -r requirements.txt`
 
 You need to create an `.env` file with a valid GEMINI_API_KEY entry
+
+```
+GEMINI_API_KEY=<your_api_key>
+```
 
 
 ### States and Plans
@@ -127,13 +129,27 @@ A plan is a listing of world-states to be executed by the operator in order. The
 
 
 ### Running
-Assume NodeJS is available. This will generate two files
+This will generate three files
 - world.json: a graph of all world state as nodes and possible connecting edges between them
 - plans.json: a listing of viale plans 
 - locations.json: topologicial graph based on location
 
+An optional `size:xattr:zattr` parameter can be passed into the script to do grid-based sampling. 
+
+`size` is used to discretize `xattr` and `zattr`, which are any summary fields, into a grid. Then each cell is sampled with a plan, if applicable.
+
+
 ```
-node ./traverse.js [grid-size]
+node ./traverse.js [size:xattr:zattr]
+
+
+# e.g. default
+node ./traverse.js 
+
+
+# e.g. 10x10 grid by energy and time
+node ./traverse.js 10:energy:time 
+
 ```
 
 
@@ -143,6 +159,9 @@ Once the above files have been generated, you can chat with an agent to reason o
 
 ```
 node ./server.js
+
+# for very large jsons
+node --max-old-space-size=8192 ./server.js
 ```
 
-Then the UI interface is available at `http://localhost:8888`
+Then the UI-interface is available at `http://localhost:8888`
