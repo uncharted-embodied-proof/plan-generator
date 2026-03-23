@@ -102,9 +102,10 @@ async function generateSearchCode(query) {
               id: number, 
               location: string,
               weather: good | bad,
-              boost: 1 | 0, 
+              turbo: 1 | 0, 
               comm: 1 | 0, 
               avoidance: 1 | 0,
+              cond: 1 | 0,
               distance: number, 
               difficulty: number 
             }, ... 
@@ -124,17 +125,24 @@ async function generateSearchCode(query) {
               energy: number,
               difficulty: number,
               deliveryTime: number,
-              deliveryMargin: number,
+              deliveryTimeMargin: number,
               payloadDeliveryTimeSafety: number,
-              payloadSafety: number,
+              bloodIntegrity: number,
               droneSafety: number,
               routeSafety: number,
               assetSafety: number,
-              patientSafety: number
+              patientSurvival: number,
+              energyReserve: number,
+              payloadTemperatureDeviation: number,
+
+              totalTurbo: number,
+              totalAvoid: number,
+              totalCond: number,
+              totalComm: number
             },
             stats: [
-              { battery: number, payloadTemp: number },
-              { battery: number, payloadTemp: number },
+              { travelTime: number, battery: number, payloadTemp: number },
+              { travelTime: number, battery: number, payloadTemp: number },
               ...
             ],
             plan: [
@@ -145,13 +153,14 @@ async function generateSearchCode(query) {
         ]
 
 
-        
 
         The code should look for node objects in world.json if the question is about the world. 
         The code should look for plan objects in plans.json if the question is about flight plans/paths
 
         If the operator is asking for a number, eg: "how many ...", "number of ...". Return a short summary.
         Important!! Do not return a list of objects unless explictedly asked to do so.
+
+        When the operator is asking time related questions, it is important to distinguish between deliveryTime and time. When the operator is asking about target/destination, the time metric to be evaluated is usually "summary.deliveryTime"
 
         Assume you have global variables "world" and "plans' as specified above, return the javascript code
         The last line of the code should be the answer
@@ -287,7 +296,8 @@ app.post('/chat', async (req, res) => {
 
             We are working with the following constraints, thus making the plans potentially invalid:
             - Any plans where battery falls below 0.1
-            - Any plans with negative deliveryMargin
+            - Any plans with negative deliveryTimeMargin
+            - At any point in the trip, the payload temperature, if not null, should be between 2 and 6 degrees
 
 
             The plans are evaluated based on a hierarchial mental model want is deemed to be important for the mission, with the bottom tiers of 
@@ -300,6 +310,18 @@ app.post('/chat', async (req, res) => {
             - droneSafety depends on droneBatteryLoad and dronePowerLoad
             - payloadSafety depends on payloadTemperatureLoad
             - payloadDeliveryTimeSafety depends on deliveryTime
+
+            Key system relationships:
+            - Increasing boost → increases speed and power consumption
+            - Increasing wind → increases power unless mitigated by boost
+            - Larger temperature difference → increases thermal cost and payload drift
+            - Longer time → increases energy use → reduces battery
+            - More aggressive terrain changes → increases difficulty
+            - Conditioning → improves temperature stability but increases power
+            - Dropping payload → reduces power and stops delivery time
+
+            !! Important !!
+            The terms "plan" and "COA" are equivalent, if the operator is asking about COAs they are asking about plans
 
 
             !! Important !!
