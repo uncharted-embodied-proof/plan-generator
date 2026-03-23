@@ -95,6 +95,8 @@ async function generateSearchCode(query) {
         You are an expert in javascript coding and json formats. Your job is to generate JS code to evaulate over the following JSONs
 
         world.json looks like:
+        - the elements in nodes represent possible configurations
+        - the temperature here refer to the temperature at the lcation, not the payload temperature
 
         {
           nodes: [ 
@@ -107,7 +109,8 @@ async function generateSearchCode(query) {
               avoidance: 1 | 0,
               cond: 1 | 0,
               distance: number, 
-              difficulty: number 
+              difficulty: number, 
+              temperature: number,
             }, ... 
           ],
           edges: [ { source, target }, ... ]
@@ -157,10 +160,13 @@ async function generateSearchCode(query) {
         The code should look for node objects in world.json if the question is about the world. 
         The code should look for plan objects in plans.json if the question is about flight plans/paths
 
-        If the operator is asking for a number, eg: "how many ...", "number of ...". Return a short summary.
+        If the query is asking for a number, eg: "how many ...", "number of ...". Return a short summary.
         Important!! Do not return a list of objects unless explictedly asked to do so.
 
-        When the operator is asking time related questions, it is important to distinguish between deliveryTime and time. When the operator is asking about target/destination, the time metric to be evaluated is usually "summary.deliveryTime"
+        When the query asking time related questions, it is important to distinguish between deliveryTime and time. When the query is asking about target/destination, the time metric to be evaluated is usually "summary.deliveryTime"
+
+        
+        When the query ask for details or configurations, return the full plan objects, the "plan" array should be converted to the world nodes that the element ids reference.
 
         Assume you have global variables "world" and "plans' as specified above, return the javascript code
         The last line of the code should be the answer
