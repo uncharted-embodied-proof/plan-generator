@@ -56,7 +56,7 @@ const zones = [
     distance: 10000,
     weather: 'good',
     difficulty: 112,
-    temperature: 18
+    temperature: 18 
   },
   {
     location: 'B',
@@ -426,6 +426,31 @@ const plans = rawPlansThatReachedGoal.map((p, i) => {
   const patientSafety = 0.5 * (payloadSafety + payloadDeliveryTimeSafety);
 
 
+  const maxTemp = Math.max(...stats.map(s => s.payloadTemp).filter(Boolean));
+  const minTemp = Math.min(...stats.map(s => s.payloadTemp).filter(Boolean));
+  let tempDeviation = 0;
+  if (maxTemp < T_payload_min) { 
+    const delta = Math.abs(maxTemp - T_payload_min);
+    if (delta > tempDeviation) tempDeviation = delta;
+  } else if (maxTemp > T_payload_max) {
+    const delta = Math.abs(maxTemp - T_payload_max);
+    if (delta > tempDeviation) tempDeviation = delta;
+  }
+
+  if (minTemp < T_payload_min) { 
+    const delta = Math.abs(minTemp - T_payload_min);
+    if (delta > tempDeviation) tempDeviation = delta;
+  } else if (minTemp > T_payload_max) {
+    const delta = Math.abs(minTemp - T_payload_max);
+    if (delta > tempDeviation) tempDeviation = delta;
+  }
+
+  // invert so high nubmer means "good"
+  tempDeviation *= -1;
+
+  // console.log(minTemp, maxTemp, tempDeviation);
+  // const payloadTemperatureDeviation
+
   // FIXME: Need to finalize the metrics and thresholds/constraints
   return { 
     id: i, 
@@ -446,6 +471,7 @@ const plans = rawPlansThatReachedGoal.map((p, i) => {
       assetSafety,
       patientSurvival: patientSafety,
       energyReserve: +((E_full - totalEnergy) / E_full).toFixed(2),
+      payloadTemperatureDeviation: tempDeviation,
 
       totalTurbo,
       totalAvoid,
@@ -544,17 +570,24 @@ stream.on("finish", () => {
   const minDifficulty = Math.min(...sampledPlans.map(p => p.summary.difficulty));
   const maxDifficulty = Math.max(...sampledPlans.map(p => p.summary.difficulty));
 
-  const minMargin = Math.min(...sampledPlans.map(p => p.summary.deliveryMargin));
-  const maxMargin = Math.max(...sampledPlans.map(p => p.summary.deliveryMargin));
+  const minMargin = Math.min(...sampledPlans.map(p => p.summary.deliveryTimeMargin));
+  const maxMargin = Math.max(...sampledPlans.map(p => p.summary.deliveryTimeMargin));
 
   const minAssetSafety = Math.min(...sampledPlans.map(p => p.summary.assetSafety));
   const maxAssetSafety = Math.max(...sampledPlans.map(p => p.summary.assetSafety));
 
-  const minPatientSafety = Math.min(...sampledPlans.map(p => p.summary.patientSurvivial));
-  const maxPatientSafety = Math.max(...sampledPlans.map(p => p.summary.patientSurvivial));
+  const minPatientSafety = Math.min(...sampledPlans.map(p => p.summary.patientSurvival));
+  const maxPatientSafety = Math.max(...sampledPlans.map(p => p.summary.patientSurvival));
 
   const minDroneSafety = Math.min(...sampledPlans.map(p => p.summary.droneSafety));
   const maxDroneSafety = Math.max(...sampledPlans.map(p => p.summary.droneSafety));
+
+  const minEnergyReserve = Math.min(...sampledPlans.map(p => p.summary.energyReserve));
+  const maxEnergyReserve = Math.max(...sampledPlans.map(p => p.summary.energyReserve));
+
+  const minTempDeviation = Math.min(...sampledPlans.map(p => p.summary.payloadTemperatureDeviation));
+  const maxTempDeviation = Math.max(...sampledPlans.map(p => p.summary.payloadTemperatureDeviation));
+
 
 
   console.log('');
@@ -568,9 +601,17 @@ stream.on("finish", () => {
   console.log(`Asset Safety:[${minAssetSafety}, ${maxAssetSafety}]`);
   console.log(`Patient Safety:[${minPatientSafety}, ${maxPatientSafety}]`);
   console.log(`Drone Safety:[${minDroneSafety}, ${maxDroneSafety}]`);
+  console.log(`Reserve :[${minEnergyReserve}, ${maxEnergyReserve}]`);
+  console.log(`Temp deviation: [${minTempDeviation}, ${maxTempDeviation}]`);
 
-  console.log(sampledPlans[222]);
-  printPlan(sampledPlans[222], world.nodes);
+  for (let i = 0; i < sampledPlans.length; i += 1) {
+    if (sampledPlans[i].summary.payloadTemperatureDeviation !== 0) {
+      console.log('>>', sampledPlans[i].summary.payloadTemperatureDeviation); 
+    }
+  }
+
+  // console.log(sampledPlans[222]);
+  // printPlan(sampledPlans[222], world.nodes);
   // const test = new Set(sampledPlans.map(p => p.summary.difficulty));
   // console.log(test);
 
