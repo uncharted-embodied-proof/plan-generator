@@ -52,7 +52,7 @@
           border-radius: 5px; 
         }
         #chat-history { 
-          height: 600px; 
+          height: 550px; 
           overflow-y: scroll; 
           border-bottom: 1px solid #ddd; 
           margin-bottom: 10px; 
@@ -89,7 +89,10 @@
     <!--
     <image src="./simple-world.png" height="400px" />
       -->
-    <div id="map"></div>
+    <div style="display: flex; flex-direction: column">
+      <div id="counter"></div>
+      <div id="map"></div>
+    </div>
     <div id="chat-container">
         <div id="chat-history"></div>
         <div id="input-area">
@@ -267,7 +270,7 @@
           const thead = table.append('thead');
           thead.append('th').text('loc.');
           thead.append('th').text('comm');
-          thead.append('th').text('boost');
+          thead.append('th').text('turbo');
           thead.append('th').text('avoid.');
           thead.append('th').text('battery');
           thead.append('th').text('p temp.');
@@ -279,7 +282,7 @@
             const tr = tbody.append('tr');
             tr.append('td').text(ws.location);
             tr.append('td').text(ws.comm);
-            tr.append('td').text(ws.boost);
+            tr.append('td').text(ws.turbo);
             tr.append('td').text(ws.avoidance);
             tr.append('td').text(plan.stats[cnt].battery);
             tr.append('td').text(
@@ -370,6 +373,21 @@
                 sendMessage();
             }
         });
+
+
+        // Stopwatch
+        let c = 0;
+        function formatTime(seconds) {
+          const mins = Math.floor(seconds / 60);
+          const secs = seconds % 60;
+          return `Elapsed:  ${mins}m ${secs}s`;
+        }
+        document.getElementById('counter').innerHTML = formatTime(c);
+        setInterval(() => {
+          c++;
+          document.getElementById('counter').innerHTML = formatTime(c);
+        }, 1000);
+
     </script>
 </body>
 </html>
