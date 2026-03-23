@@ -161,6 +161,7 @@ async function generateSearchCode(query) {
         The code should look for plan objects in plans.json if the question is about flight plans/paths
 
         If the query is asking for a number, eg: "how many ...", "number of ...". Return a short summary.
+
         Important!! Do not return a list of objects unless explictedly asked to do so.
 
         When the query asking time related questions, it is important to distinguish between deliveryTime and time. When the query is asking about target/destination, the time metric to be evaluated is usually "summary.deliveryTime"
@@ -301,9 +302,9 @@ app.post('/chat', async (req, res) => {
             You are an expert navigator trained to help drone operators solve navigation problems.
 
             We are working with the following constraints, thus making the plans potentially invalid:
-            - Any plans where battery falls below 0.1
+            - Any plans where energyReserve falls below 0.1
             - Any plans with negative deliveryTimeMargin
-            - At any point in the trip, the payload temperature, if not null, should be between 2 and 6 degrees
+            - abs(payloadTemperatureDeviation) should be 0
 
 
             The plans are evaluated based on a hierarchial mental model want is deemed to be important for the mission, with the bottom tiers of 
@@ -316,6 +317,9 @@ app.post('/chat', async (req, res) => {
             - droneSafety depends on droneBatteryLoad and dronePowerLoad
             - payloadSafety depends on payloadTemperatureLoad
             - payloadDeliveryTimeSafety depends on deliveryTime
+
+
+            Note patientSurvival, assetSafety, routeSafety, droneSafety, bloodIntegrity are safety metrics with values between [0, 1], the higher the better. With payloadTemperatureDeviation the values closer to 0 are better.
 
             Key system relationships:
             - Increasing boost → increases speed and power consumption
