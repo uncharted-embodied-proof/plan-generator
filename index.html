@@ -63,16 +63,16 @@
         .user-message { 
           text-align: right; 
           color: blue; 
-          background: #ddf; 
-          padding: 0.10rem 0.5rem; 
+          background: #eef; 
+          padding: 0.05rem 0.5rem; 
           border-radius: 0.25rem ;
           margin-left: 1.5rem;
         }
         .bot-message { 
           text-align: left; 
           color: #234; 
-          background: #eee; 
-          padding: 0.10rem 0.5rem; 
+          background: #f4f4f4; 
+          padding: 0.05rem 0.5rem; 
           border-radius: 0.25rem ;
           margin-right: 1.5rem;
         }
@@ -90,8 +90,11 @@
     <image src="./simple-world.png" height="400px" />
       -->
     <div style="display: flex; flex-direction: column">
-      <div id="counter"></div>
+      <div style="max-width: 180px; padding: 10px">
+        Starting at X, deliver the supply to Y and come back to X.
+      </div>
       <div id="map"></div>
+      <div id="counter"></div>
     </div>
     <div id="chat-container">
         <div id="chat-history"></div>
@@ -130,8 +133,8 @@
          * D3 Gen force-directed graph
         **/
         function generateGraph(world, topIds = [], bottomIds = []) {
-          const width = 200;
-          const height = 400;
+          const width = 180;
+          const height = 350;
 
           const nodes = world.nodes.map(d => ({ ...d }));
           const links = world.edges.map(d => ({ ...d }));
@@ -232,6 +235,7 @@
           if (!plan) return;
           planId = plan.id;
           viewPlan(planId);
+          document.getElementById('plan-id').value = planId;
         }
         function next() {
           let idx = plans.findIndex(p => p.id === planId);
@@ -243,6 +247,7 @@
           if (!plan) return;
           planId = plan.id;
           viewPlan(planId);
+          document.getElementById('plan-id').value = planId;
         }
         function view() {
           const str = document.getElementById('plan-id').value;

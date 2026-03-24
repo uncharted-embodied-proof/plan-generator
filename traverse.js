@@ -330,14 +330,14 @@ const plans = rawPlansThatReachedGoal.map((p, i) => {
     const prevWs = i === 0 ? ws : worldStateMap.get(p[i-1]);
 
     const v_wind_zone = (ws.weather === 'good' ? 0.3 : 7.0);
-    const f_boost = ws.turbo;
+    const f_turbo = ws.turbo;
     const f_comms = ws.comm;
     const f_avoid = ws.avoidance;
     const f_cond = ws.cond;
     const f_payload = dropped === true ? 0 : 1;
     const T_zone = ws.temperature;
 
-    totalTurbo += f_boost;
+    totalTurbo += f_turbo;
     totalAvoid += f_avoid;
     totalCond += f_cond;
     totalComm += f_comms;
@@ -347,8 +347,8 @@ const plans = rawPlansThatReachedGoal.map((p, i) => {
 
     const powerConsumption = (
       P_base +
-      P_weather * (v_wind_zone / v_wind_max) * (1 - f_boost) +
-      P_boost * f_boost + 
+      P_weather * (v_wind_zone / v_wind_max) * (1 - f_turbo) +
+      P_boost * f_turbo + 
       P_payload * f_payload +
       P_comms * f_comms + 
       P_avoid * f_avoid +

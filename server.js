@@ -21,8 +21,8 @@ let codeUseCount = 0;
 
 // const MODEL = "gemini-1.5-flash";
 // const MODEL = "gemini-2.5-flash"; 
-// const MODEL = "gemini-2.5-flash-lite";
-const MODEL = "gemini-3.1-flash-lite-preview";
+const MODEL = "gemini-2.5-flash-lite";
+// const MODEL = "gemini-3.1-flash-lite-preview";
 
 // const CODE_MODEL = "gemini-2.5-flash-lite";
 const CODE_MODELS = [
@@ -61,24 +61,24 @@ const tools = [
       },
     ],
   },
-  {
-    functionDeclarations: [
-      {
-        name: "python_query",
-        description: "Handles complicated graph analyics like traversals, spanning trees, neighbourhood search, pareto fronts and the like.",
-        parameters: {
-          type: "object",
-          properties: {
-            query: {
-              type: "string",
-              description: "The question relating to graph properties",
-            }
-          },
-          required: ["query"],
-        },
-      },
-    ],
-  }
+  // {
+  //   functionDeclarations: [
+  //     {
+  //       name: "python_query",
+  //       description: "Handles complicated graph analyics like traversals, spanning trees, neighbourhood search, pareto fronts and the like.",
+  //       parameters: {
+  //         type: "object",
+  //         properties: {
+  //           query: {
+  //             type: "string",
+  //             description: "The question relating to graph properties",
+  //           }
+  //         },
+  //         required: ["query"],
+  //       },
+  //     },
+  //   ],
+  // }
 ];
 
 
@@ -88,8 +88,11 @@ const tools = [
 async function generateSearchCode(query) {
   codeUseCount ++;
 
+  const codeModel = CODE_MODELS[codeUseCount % CODE_MODELS.length];
+  console.log(`generateSearchCode Model: ${codeModel}`);
+
   const response = await ai.models.generateContent({
-    model: CODE_MODELS[codeUseCount % CODE_MODELS.length],
+    model: codeModel,
     config: {
       systemInstruction: `
         You are an expert in javascript coding and json formats. Your job is to generate JS code to evaulate over the following JSONs
@@ -292,6 +295,7 @@ app.post('/chat', async (req, res) => {
     iteration ++;
     const toolChoice = contents.some(c => c.role === 'tool') ? 'none' : 'auto';
     console.log(`iteration: ${iteration}`);
+    console.log(`model: ${MODEL}`);
     console.log(`tool choice: ${toolChoice}`);
 
     try {
@@ -307,28 +311,82 @@ app.post('/chat', async (req, res) => {
             - abs(payloadTemperatureDeviation) should be 0
 
 
-            The plans are evaluated based on a hierarchial mental model want is deemed to be important for the mission, with the bottom tiers of 
-            the mental model mapping back to the drone's physical states.
+            The plans are based on a domain specific mental model. The model outlines the how to think about the situation at hand, from high level goal oriented concepts, ddwn to the physical states. You think kind of think of this as an edge list.
 
-            The mental model is summarized below:
-            - patientSafety depends on payloadSafety and payloadDeliveryTimeSafety
-            - assetSafety depends on droneSafety and routeSafety
-            - routeSafety depends on droneTemperatureLoad, droneWindLoad, and difficulty
-            - droneSafety depends on droneBatteryLoad and dronePowerLoad
-            - payloadSafety depends on payloadTemperatureLoad
-            - payloadDeliveryTimeSafety depends on deliveryTime
+            The format is: <Dependent>,<Dependency>,<weight>
 
+                patientSurvival,bloodIntegrity,50
+                patientSurvival,payloadDeliveryTimeSafety,50
+                time,travelTime,100
+                energy,E,100
+                assetSafety,droneBatterySafety,25
+                assetSafety,dronePowerSafety,25
+                assetSafety,temperatureSafety,17
+                assetSafety,windSafety,17
+                assetSafety,ascentSafety,16
+                bloodIntegrity,payloadTemperatureLoad,50
+                payloadDeliveryTimeSafety,deliveryTime,40
+                payloadDeliveryTimeSafety,t_payload_max,10
+                droneBatterySafety,battery,25
+                dronePowerSafety,dronePowerLoad,25
+                temperatureSafety,droneTemperatureLoad,17
+                windSafety,droneWindLoad,17
+                ascentSafety,difficulty,16
+                battery,E,13
+                battery,E_full,12
+                dronePowerLoad,P,13
+                dronePowerLoad,P_max,12
+                droneTemperatureLoad,travelTime,6
+                droneTemperatureLoad,T_max,6
+                droneTemperatureLoad,T_min,5
+                droneWindLoad,v_wind_zone,9
+                droneWindLoad,v_wind_max,8
+                difficulty,D_zone,6
+                difficulty,travelTime,5
+                difficulty,v_ascent_max,5
+                payloadTemperatureLoad,temperature,50
+                temperature,payloadTemperatureDeviation,25
+                temperature,f_cond,25
+                payloadTemperatureDeviation,travelTime,5
+                payloadTemperatureDeviation,c_cond,5
+                payloadTemperatureDeviation,travelTime,5
+                payloadTemperatureDeviation,c_payload,5
+                payloadTemperatureDeviation,m_payload,5
+                E,P,55
+                E,travelTime,45
+                deliveryTime,travelTime,40
+                travelTime,D_zone,80
+                travelTime,v_base,38
+                travelTime,v_turbo,38
+                travelTime,f_turbo,34
+                P,P_base,20
+                P,f_payload,14
+                P,f_turbo,10
+                P,v_wind_zone,8
+                P,f_cond,6
+                P,f_comm,4
+                P,f_avoid,4
+                P,c_cond,2
+                totalTurbo,f_turbo,1
+                totalAvoid,f_avoid,1
+                totalCond,f_cond,1
+                totalComm,f_comm,1
+                percentTurbo,f_turbo,1
+                percentAvoid,f_avoid,1
+                percentCond,f_cond,1
+                percentComm,f_comm,1
 
             Note patientSurvival, assetSafety, routeSafety, droneSafety, bloodIntegrity are safety metrics with values between [0, 1], the higher the better. With payloadTemperatureDeviation the values closer to 0 are better.
 
-            Key system relationships:
-            - Increasing boost → increases speed and power consumption
-            - Increasing wind → increases power unless mitigated by boost
-            - Larger temperature difference → increases thermal cost and payload drift
-            - Longer time → increases energy use → reduces battery
-            - More aggressive terrain changes → increases difficulty
-            - Conditioning → improves temperature stability but increases power
-            - Dropping payload → reduces power and stops delivery time
+            The variables that we can physically change are:
+            - f_turbo
+            - f_avoid
+            - f_comm
+            - f_cond
+
+
+            !! Important !!
+            If the operator asks about constraints, tradeoffs, and variables, answer the question directly, do not call a Tool. 
 
             !! Important !!
             The terms "plan" and "COA" are equivalent, if the operator is asking about COAs they are asking about plans
