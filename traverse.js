@@ -48,28 +48,28 @@ const legs = [
   // first half
   {
     leg: 'XA', 
-    distance: 5000,
+    distance: 17000,
     weather: 'good',
     difficulty: 29,
     temperature: 18
   },
   {
     leg: 'XB', 
-    distance: 5000,
-    weather: 'good',
+    distance: 10000,
+    weather: 'bad',
     difficulty: 29,
     temperature: 10
   },
   {
     leg: 'XC',
-    distance: 5000,
+    distance: 10000,
     weather: 'good',
     difficulty: 29,
     temperature: 11
   },
   {
     leg: 'XD', 
-    distance: 5000,
+    distance: 12000,
     weather: 'good',
     difficulty: 29,
     temperature: 12
@@ -78,28 +78,28 @@ const legs = [
   // second half
   {
     leg: 'AY',
-    distance: 10000,
+    distance: 8400,
     weather: 'good',
     difficulty: 112,
     temperature: 18 
   },
   {
     leg: 'BY',
-    distance: 5000,
+    distance: 8000,
     weather: 'bad',
     difficulty: 310,
     temperature: 10
   },
   {
     leg: 'CY',
-    distance: 8000,
+    distance: 11000,
     weather: 'good',
     difficulty: 792 ,
     temperature: 5
   },
   {
     leg: 'DY',
-    distance: 4000,
+    distance: 7000,
     weather: 'good',
     difficulty: 1331,
     temperature: 8
@@ -632,8 +632,6 @@ if (process.argv.length === 3) {
   console.log('# pruned plans (after grid-based sampling)', sampledPlans.length);
 } 
 
-sampledPlans = sampledPlans.filter(p => p.summary.energyReserve > -0.1);
-console.log('test....', sampledPlans.length);
 
 // Build a location topology 
 const locationGraph = {
@@ -659,14 +657,14 @@ function findExtent(arr, str) {
   let max = -Infinity;
 
   for (const item of arr) {
-    const value = item?.summary?.[str];
+    const value = item.summary[str];
     if (value == null) continue; // skip undefined/null
     if (value < min) min = value;
     if (value > max) max = value;
   }
 
   if (min === Infinity || max === -Infinity) {
-    return null; // no valid values found
+    return [0, 0];
   }
   return [ min, max ];
 }
