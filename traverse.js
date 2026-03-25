@@ -33,7 +33,7 @@ function cartesianObject(obj) {
 ////////////////////////////////////////////////////////////////////////////////
 // World specification
 ////////////////////////////////////////////////////////////////////////////////
-const NUM_STEPS = 5;
+const NUM_STEPS = 4;
 
 const model = {
   comm: [1, 0],
@@ -43,52 +43,70 @@ const model = {
 };
 
 
-const zones = [
+const waypoints = ['X', 'A', 'B', 'C', 'D', 'Y'];
+const legs = [
+  // first half
   {
-    location: 'X', 
+    leg: 'XA', 
     distance: 5000,
     weather: 'good',
     difficulty: 29,
     temperature: 18
   },
   {
-    location: 'A',
+    leg: 'XB', 
+    distance: 5000,
+    weather: 'good',
+    difficulty: 29,
+    temperature: 10
+  },
+  {
+    leg: 'XC',
+    distance: 5000,
+    weather: 'good',
+    difficulty: 29,
+    temperature: 11
+  },
+  {
+    leg: 'XD', 
+    distance: 5000,
+    weather: 'good',
+    difficulty: 29,
+    temperature: 12
+  },
+
+  // second half
+  {
+    leg: 'AY',
     distance: 10000,
     weather: 'good',
     difficulty: 112,
     temperature: 18 
   },
   {
-    location: 'B',
+    leg: 'BY',
     distance: 5000,
     weather: 'bad',
     difficulty: 310,
     temperature: 10
   },
   {
-    location: 'C',
+    leg: 'CY',
     distance: 8000,
     weather: 'good',
     difficulty: 792 ,
     temperature: 5
   },
   {
-    location: 'D',
+    leg: 'DY',
     distance: 4000,
     weather: 'good',
     difficulty: 1331,
     temperature: 8
-  },
-  {
-    location: 'Y',
-    distance: 3000,
-    weather: 'good',
-    difficulty: 1592, 
-    temperature: 5
   }
 ];
 
-// Give some constraints to the world so it isn't a K-graph
+// Give some constraints so the world so it isn't a K-graph
 // and a combinatorial explosion
 function getNextLocations(v) {
   if (v === 'X') return ['A', 'B', 'C', 'D'];
@@ -110,33 +128,17 @@ function neighbourNodes(locationId, worldStates) {
 let worldStates = [];
 let worldEdges = [];
 let cnt = 0;
-zones.forEach(z => {
-  const permutations = cartesianObject(model);
-  permutations.forEach(p => {
-    worldStates.push({
-      ...p,
-      ...z,
-      id: ++cnt
-    });
+
+waypoints.forEach(w => {
+  worldStates.push({
+    location: w,
+    id: ++cnt
   });
 });
 
-
-// Do some pruning so we don't explode the state space too much
-// 1 - Remove comm variability at start (X)
-// 2 - Remove avoidance variability at start (X)
-worldStates = worldStates.filter(ws => {
-  if (ws.avoidcance === 1 && ws.location === 'X') return false;
-  if (ws.comm === 1 && ws.location === 'X') return false;
-
-  if (ws.avoidcance === 1 && ws.location === 'Y') return false;
-  if (ws.comm === 1 && ws.location === 'Y') return false;
-
-  return true;
-});
-
-
 worldStates.forEach(s => {
+  const permutations = cartesianObject(model);
+
   neighbourNodes(s.location, worldStates).forEach(s2 => {
     worldEdges.push({
       source: s.id,
@@ -146,13 +148,58 @@ worldStates.forEach(s => {
 });
 
 
+
+
+
+// waypoints.forEach(z => {
+//   const permutations = cartesianObject(model);
+//   permutations.forEach(p => {
+//     worldStates.push({
+//       ...p,
+//       location: z,
+//       id: ++cnt
+//     });
+//   });
+// });
+
+
+
+// Do some pruning so we don't explode the state space too much
+// 1 - Remove comm variability at start (X)
+// 2 - Remove avoidance variability at start (X)
+// worldStates = worldStates.filter(ws => {
+//   if (ws.avoidcance === 1 && ws.location === 'X') return false;
+//   if (ws.comm === 1 && ws.location === 'X') return false;
+// 
+//   if (ws.avoidcance === 1 && ws.location === 'Y') return false;
+//   if (ws.comm === 1 && ws.location === 'Y') return false;
+// 
+//   return true;
+// });
+
+
+
+// worldStates.forEach(s => {
+//   neighbourNodes(s.location, worldStates).forEach(s2 => {
+//     worldEdges.push({
+//       source: s.id,
+//       target: s2.id
+//     });
+//   });
+// });
+
+
 const world = { nodes: worldStates, edges: worldEdges };
 
-console.log('world nodes ', world.nodes.length);
-console.log('world edges', world.edges.length);
 
 const starts = world.nodes.filter(n => n.location === 'X').map(n => n.id);
 const goals = world.nodes.filter(n => n.location === 'Y').map(n => n.id);
+
+console.log('world nodes ', world.nodes.length);
+console.log('world edges', world.edges.length);
+console.log('start', starts);
+console.log('goals', goals);
+console.log(world);
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -174,6 +221,8 @@ function traverseGraph(world, startId, k) {
     }
   }
 
+  console.log('adj', adj);
+
   const results = [];
 
   function dfs(current, depth, visitCount, path) {
@@ -188,7 +237,7 @@ function traverseGraph(world, startId, k) {
       // Backtrack
       path.pop();
       visitCount.set(current, visitCount.get(current) - 1);
-      return
+      return;
     }
 
     // Save current path (optional: remove if you only want full depth paths)
@@ -219,15 +268,16 @@ function traverseGraph(world, startId, k) {
   return results;
 }
 
-console.log('Start ids:', starts);
-console.log('Goal ids:', goals);
-
 let rawPlans = [];
 starts.forEach(sid => {
   const p = traverseGraph(world, sid, NUM_STEPS);
   rawPlans = rawPlans.concat(p);
 });
 console.log('# raw plans', rawPlans.length);
+console.log('# raw plans', rawPlans[0]);
+
+
+
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -237,7 +287,6 @@ console.log('# raw plans', rawPlans.length);
 // - 2. Only those that have made it back to start? 
 //
 ////////////////////////////////////////////////////////////////////////////////
-const worldStateMap = new Map(world.nodes.map(n => [n.id, n]));
 
 let rawPlansThatReachedGoal = []
 rawPlansThatReachedGoal = rawPlans.filter(plan => {
@@ -245,7 +294,63 @@ rawPlansThatReachedGoal = rawPlans.filter(plan => {
     && starts.includes(_.last(plan));
 });
 console.log('# pruned plans (reach goal and home)', rawPlansThatReachedGoal.length);
+console.log('# pruned plans (reach goal and home)', rawPlansThatReachedGoal);
 
+
+
+const worldLegs = [];
+let legcnt = 0;
+for (const leg of legs) {
+  const permutations = cartesianObject(model);
+  for (const p of permutations) {
+    worldLegs.push({
+      ...p,
+      ...leg,
+      id: legcnt
+    });
+    legcnt ++;
+  }
+}
+const worldLegsMap = new Map(worldLegs.map(n => [n.id, n]));
+
+
+
+
+const findLoc = (id) => world.nodes.find(n => n.id === id).location;
+const expandedPlans = [];
+for (const plan of rawPlansThatReachedGoal) {
+  const key1 = `${findLoc(plan[0])}${findLoc(plan[1])}`;
+  const key2 = `${findLoc(plan[1])}${findLoc(plan[2])}`;
+  const key3 = `${findLoc(plan[2])}${findLoc(plan[3])}`;
+  const key4 = `${findLoc(plan[3])}${findLoc(plan[4])}`;
+
+  const key1r = `${findLoc(plan[1])}${findLoc(plan[0])}`;
+  const key2r = `${findLoc(plan[2])}${findLoc(plan[1])}`;
+  const key3r = `${findLoc(plan[3])}${findLoc(plan[2])}`;
+  const key4r = `${findLoc(plan[4])}${findLoc(plan[3])}`;
+
+  const legs1 = worldLegs.filter(l => l.leg === key1 || l.leg === key1r); 
+  const legs2 = worldLegs.filter(l => l.leg === key2 || l.leg === key2r); 
+  const legs3 = worldLegs.filter(l => l.leg === key3 || l.leg === key3r); 
+  const legs4 = worldLegs.filter(l => l.leg === key4 || l.leg === key4r); 
+
+
+  for (const a of legs1) {
+    for (const b of legs2) {
+      for (const c of legs3) {
+        for (const d of legs4) {
+          expandedPlans.push([a.id, b.id, c.id, d.id]);
+        }
+      }
+    }
+  }
+}
+
+console.log(expandedPlans.length);
+console.log(expandedPlans[0]);
+
+
+/*
 rawPlansThatReachedGoal = rawPlansThatReachedGoal.filter(plan => {
   const index = plan.indexOf(d => {
     return goals.include(d);
@@ -260,12 +365,12 @@ rawPlansThatReachedGoal = rawPlansThatReachedGoal.filter(plan => {
   return true;
 });
 console.log('# pruned plans (irrelevant payload condition)', rawPlansThatReachedGoal.length);
-
+*/
 
 
 /* Score the plans with user criteria */
 const P_base = 1000;
-const P_boost = 200;
+const P_boost = 650;
 const P_payload = 1000;
 const P_comms = 8;
 const P_avoid = 20;
@@ -307,7 +412,7 @@ const SAFETYFUNC = (values, times, totalTime) => {
 }
 
 
-const plans = rawPlansThatReachedGoal.map((p, i) => {
+const plans = expandedPlans.map((p, i) => {
   let totalDifficulty = 0;
   let totalEnergy = 0;
   let totalTime = 0;
@@ -326,8 +431,8 @@ const plans = rawPlansThatReachedGoal.map((p, i) => {
   for (let i = 0; i < p.length; i++) {
     const pid = p[i];
 
-    const ws = worldStateMap.get(pid);
-    const prevWs = i === 0 ? ws : worldStateMap.get(p[i-1]);
+    const ws = worldLegsMap.get(pid);
+    const prevWs = i === 0 ? ws : worldLegsMap.get(p[i-1]);
 
     const v_wind_zone = (ws.weather === 'good' ? 0.3 : 7.0);
     const f_turbo = ws.turbo;
@@ -388,9 +493,11 @@ const plans = rawPlansThatReachedGoal.map((p, i) => {
      * t - payload temperature
     */
     stats.push({
+      leg: ws.leg,
       travelTime: +travelTime.toFixed(2),
-      payloadTemp: dropped ? null : +currentTemperature.toFixed(2),
-      battery: +((E_full - totalEnergy) / E_full).toFixed(2),
+      payloadTemperature: dropped ? null : +currentTemperature.toFixed(2),
+      energyReserve: +((E_full - totalEnergy) / E_full).toFixed(2),
+
 
       payloadTemperatureLoad: +payloadTemperatureLoad.toFixed(2),
       droneBatteryLoad: +droneBatteryLoad.toFixed(2),
@@ -426,8 +533,8 @@ const plans = rawPlansThatReachedGoal.map((p, i) => {
   const patientSafety = 0.5 * (payloadSafety + payloadDeliveryTimeSafety);
 
 
-  const maxTemp = Math.max(...stats.map(s => s.payloadTemp).filter(Boolean));
-  const minTemp = Math.min(...stats.map(s => s.payloadTemp).filter(Boolean));
+  const maxTemp = Math.max(...stats.map(s => s.payloadTemperature).filter(Boolean));
+  const minTemp = Math.min(...stats.map(s => s.payloadTemperature).filter(Boolean));
   let tempDeviation = 0;
   if (maxTemp < T_payload_min) { 
     const delta = Math.abs(maxTemp - T_payload_min);
@@ -490,6 +597,8 @@ const plans = rawPlansThatReachedGoal.map((p, i) => {
 });
 
 
+console.log('# of total plans', plans.length);
+
 
 // Sample on a 2D grid according to metrics
 let sampledPlans = plans;
@@ -523,6 +632,8 @@ if (process.argv.length === 3) {
   console.log('# pruned plans (after grid-based sampling)', sampledPlans.length);
 } 
 
+sampledPlans = sampledPlans.filter(p => p.summary.energyReserve > -0.1);
+console.log('test....', sampledPlans.length);
 
 // Build a location topology 
 const locationGraph = {
@@ -530,16 +641,35 @@ const locationGraph = {
   edges: []
 };
 
-zones.forEach(z => {
-  locationGraph.nodes.push({ id: z.location });
-  const targets = getNextLocations(z.location );
+['X', 'Y', 'A', 'B', 'C', 'D'].forEach(location => {
+  locationGraph.nodes.push({ id: location });
+  const targets = getNextLocations(location );
 
   targets.forEach(t => {
     locationGraph.edges.push({
-      source: z.location, target: t
+      source: location, target: t
     });
   });
 });
+
+
+
+function findExtent(arr, str) {
+  let min = Infinity;
+  let max = -Infinity;
+
+  for (const item of arr) {
+    const value = item?.summary?.[str];
+    if (value == null) continue; // skip undefined/null
+    if (value < min) min = value;
+    if (value > max) max = value;
+  }
+
+  if (min === Infinity || max === -Infinity) {
+    return null; // no valid values found
+  }
+  return [ min, max ];
+}
 
 
 
@@ -563,6 +693,20 @@ for (const chunk of stringifyArray(sampledPlans)) {
 }
 stream.end();
 stream.on("finish", () => {
+
+  const [minEnergy, maxEnergy] = findExtent(sampledPlans, 'energy');
+  const [minTime, maxTime] = findExtent(sampledPlans, 'time');
+  const [minDifficulty, maxDifficulty] = findExtent(sampledPlans, 'difficulty');
+  const [minMargin, maxMargin] = findExtent(sampledPlans, 'deliveryTimeMargin');
+
+  console.log('=== stats ===');
+  console.log(`Energy Used: [${minEnergy}, ${maxEnergy}]`);
+  console.log(`Difficulty:[${minDifficulty}, ${maxDifficulty}]`);
+  console.log(`Delivery Margin:[${minMargin}, ${maxMargin}]`);
+  console.log(`Time Used: [${minTime}, ${maxTime}]`);
+
+
+  /*
   const minEnergy = Math.min(...sampledPlans.map(p => p.summary.energy));
   const maxEnergy = Math.max(...sampledPlans.map(p => p.summary.energy));
   const minTime = Math.min(...sampledPlans.map(p => p.summary.time));
@@ -589,12 +733,9 @@ stream.on("finish", () => {
   const maxTempDeviation = Math.max(...sampledPlans.map(p => p.summary.payloadTemperatureDeviation));
 
 
-
   console.log('');
   console.log("plans.json written");
   console.log('');
-  console.log('=== stats ===');
-  console.log(`Energy Used: [${minEnergy}, ${maxEnergy}]`);
   console.log(`Time Used: [${minTime}, ${maxTime}]`);
   console.log(`Difficulty:[${minDifficulty}, ${maxDifficulty}]`);
   console.log(`Delivery Margin:[${minMargin}, ${maxMargin}]`);
@@ -603,12 +744,15 @@ stream.on("finish", () => {
   console.log(`Drone Safety:[${minDroneSafety}, ${maxDroneSafety}]`);
   console.log(`Reserve :[${minEnergyReserve}, ${maxEnergyReserve}]`);
   console.log(`Temp deviation: [${minTempDeviation}, ${maxTempDeviation}]`);
+  */
 
+  /*
   for (let i = 0; i < sampledPlans.length; i += 1) {
     if (sampledPlans[i].summary.payloadTemperatureDeviation !== 0) {
       console.log('>>', sampledPlans[i].summary.payloadTemperatureDeviation); 
     }
   }
+  */
 
   // console.log(sampledPlans[222]);
   // printPlan(sampledPlans[222], world.nodes);
