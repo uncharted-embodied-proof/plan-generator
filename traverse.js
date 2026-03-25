@@ -221,8 +221,6 @@ function traverseGraph(world, startId, k) {
     }
   }
 
-  console.log('adj', adj);
-
   const results = [];
 
   function dfs(current, depth, visitCount, path) {
@@ -274,9 +272,6 @@ starts.forEach(sid => {
   rawPlans = rawPlans.concat(p);
 });
 console.log('# raw plans', rawPlans.length);
-console.log('# raw plans', rawPlans[0]);
-
-
 
 
 
@@ -696,12 +691,17 @@ stream.on("finish", () => {
   const [minTime, maxTime] = findExtent(sampledPlans, 'time');
   const [minDifficulty, maxDifficulty] = findExtent(sampledPlans, 'difficulty');
   const [minMargin, maxMargin] = findExtent(sampledPlans, 'deliveryTimeMargin');
+  const [minPatientSurvival, maxPatientSurvival] = findExtent(sampledPlans, 'patientSurvival');
+  const [minAssetSafety, maxAssetSafety] = findExtent(sampledPlans, 'assetSafety');
 
   console.log('=== stats ===');
   console.log(`Energy Used: [${minEnergy}, ${maxEnergy}]`);
   console.log(`Difficulty:[${minDifficulty}, ${maxDifficulty}]`);
   console.log(`Delivery Margin:[${minMargin}, ${maxMargin}]`);
   console.log(`Time Used: [${minTime}, ${maxTime}]`);
+  console.log(`Patient Surivival: [${minPatientSurvival}, ${maxPatientSurvival}]`);
+  console.log(`Asset Safety:; [${minAssetSafety}, ${maxAssetSafety}]`);
+
 
 
   /*
