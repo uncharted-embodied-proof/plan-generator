@@ -1,123 +1,76 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-bs-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Nav Wizard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
 
     <style>
-        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: flex-start; }
-
-        table {
-          margin-top: 1rem;
-          width: 100%;
-          border-collapse: collapse;
-          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
-                       Roboto, "Helvetica Neue", Arial, sans-serif;
-          font-size: 0.75rem;
-          color: #2a2a2a;
-        }
-
-        /* Header */
-        thead {
-          background-color: #f4f6f8;
-        }
-
-        th {
-          text-align: left;
-          font-weight: 600;
-          padding: 0.75rem 1rem;
-          border-bottom: 2px solid #e1e4e8;
-          letter-spacing: 0.02em;
-        }
-
-        /* Body cells */
-        td {
-          padding: 0.7rem 1rem;
-          border-bottom: 1px solid #eceff1;
-        }
-
-        /* Alternating rows */
-        tbody tr:nth-child(even) {
-          background-color: #fafbfc;
-        }
-
-        #chat-container { 
-          width: 65%; 
-          max-width: 800px; 
-          border: 1px solid #ddd; 
-          padding: 5px; 
-          border-radius: 5px; 
-        }
-        #chat-history { 
-          height: 550px; 
-          overflow-y: scroll; 
-          border-bottom: 1px solid #ddd; 
-          margin-bottom: 10px; 
-          padding: 5px; 
-        }
+        /* Custom styles for chat messages, adapted for dark theme */
         .message { margin-bottom: 5px; }
 
-        .user-message { 
-          text-align: right; 
-          color: blue; 
-          background: #eef; 
-          padding: 0.05rem 0.5rem; 
+        .user-message {
+          text-align: right;
+          color: #90CAF9; /* Light blue for dark theme */
+          background: #334; /* Darker background for user messages */
+          padding: 0.05rem 0.5rem;
           border-radius: 0.25rem ;
           margin-left: 1.5rem;
         }
-        .bot-message { 
-          text-align: left; 
-          color: #234; 
-          background: #f4f4f4; 
-          padding: 0.05rem 0.5rem; 
+        .bot-message {
+          text-align: left;
+          color: #A5D6A7; /* Light green for dark theme */
+          background: #223; /* Even darker background for bot messages */
+          padding: 0.05rem 0.5rem;
           border-radius: 0.25rem ;
           margin-right: 1.5rem;
         }
-        #input-area { display: flex; width: 100%; }
-        #message-input { flex-grow: 1; padding: 5px; }
-        #send-button { padding: 5px 10px; }
-        #plan-viewer {
-          display: flex;
-          flex-direction: column;
+
+        table {
+          font-size: 80%;
         }
     </style>
 </head>
-<body style="display: flex; flex-direction: row"">
-    <!--
-    <image src="./simple-world.png" height="400px" />
-      -->
-    <div style="display: flex; flex-direction: column">
-      <div style="max-width: 180px; padding: 10px">
-        Starting at X, deliver the supply to Y and come back to X.
-      </div>
-      <div id="map"></div>
-      <div id="counter"></div>
-    </div>
-    <div id="chat-container">
-        <div id="chat-history"></div>
-        <div id="input-area">
-            <input type="text" id="message-input" placeholder="Type your message...">
-            <button id="send-button">Send</button>
+<body class="d-flex flex-column min-vh-100">
+    <div class="container-fluid flex-grow-1 d-flex flex-column py-3">
+        <div class="row flex-grow-1">
+            <!-- Left Column: Summary and Metadata -->
+            <div class="col-md-2 d-flex flex-column">
+                <div class="p-2 mb-3 bg-dark-subtle text-emphasis-dark rounded">
+                    Starting at X, deliver the supply to Y and come back to X.
+                </div>
+                <div id="map" class="flex-grow-1 mb-3"></div>
+                <div id="counter" class="p-2 bg-dark-subtle text-emphasis-dark rounded"></div>
+            </div>
+
+            <!-- Center Column: Chat Interface -->
+            <div class="col-md-7 d-flex flex-column">
+                <div id="chat-container" class="flex-grow-1 d-flex flex-column border rounded p-2 mb-3">
+                    <div id="chat-history" class="flex-grow-1 overflow-auto border-bottom pb-2 mb-2"></div>
+                    <div id="input-area" class="d-flex">
+                        <input type="text" id="message-input" class="form-control me-2" placeholder="Type your message...">
+                        <button id="send-button" class="btn btn-primary">Send</button>
+                    </div>
+                    <p id="intro" class="text-muted mt-2">Start the conversation by asking the AI if there are valid COAs. You can query AI about constraints and query COAs</p>
+                </div>
+            </div>
+
+            <!-- Right Column: Drilldown -->
+            <div class="col-md-3 d-flex flex-column">
+                <div class="d-flex align-items-center mb-3">
+                    <button onClick="prev()" class="btn btn-secondary btn-sm me-1">Prev</button>
+                    <input type="number" id="plan-id" class="form-control form-control-sm text-center mx-1" style="width: 80px;">
+                    <button onClick="next()" class="btn btn-secondary btn-sm me-1">Next</button>
+                    <button onClick="view()" class="btn btn-primary btn-sm">View</button>
+                </div>
+                <div id="plan-viewer" class="flex-grow-1 bg-dark-subtle text-emphasis-dark rounded p-2">
+                </div>
+            </div>
         </div>
     </div>
-    <div style="padding: 1rem"> 
-      <div style="display: flex">
-        <button onClick="prev()">Prev</button>
-        &nbsp;
-        <input type="number" id="plan-id">
-        &nbsp;
-        <button onClick="next()">Next</button>
-        &nbsp;
-        &nbsp;
-        <button onClick="view()">View</button>
-      </div>
-      <div id="plan-viewer">
-      </div>
-    </div>
-
     <script>
         const chatHistory = document.getElementById('chat-history');
         const messageInput = document.getElementById('message-input');
@@ -164,7 +117,7 @@
           nodeGroup.append("circle")
             .attr("r", 17)
             .attr("fill", "#ccc")
-            .attr("stroke", "#fff")
+            .attr("stroke", "#555")
             .attr("stroke-width", 3);
 
           nodeGroup.append("text")
@@ -265,33 +218,32 @@
 
           // elem.append('p').text(`Plan ${plan.id}`);
           elem.append('p').text(`Energy expensiture: ${plan.summary.energy}`);
-          elem.append('p').text(`Time spent: ${plan.summary.time}`);
-          elem.append('p').text(`Plan difficulty: ${plan.summary.difficulty}`);
+          elem.append('p').text(`Time margin: ${plan.summary.deliveryTimeMargin}`);
+          elem.append('p').text(`Temperature deviation: ${plan.summary.payloadTemperatureDeviation}`);
 
 
-          const table = elem.append('table');
+          const table = elem.append('table').attr('class', 'table table-dark table-striped');
           const wmap = new Map(world.nodes.map(n => [n.id, n]));
 
           const thead = table.append('thead');
-          thead.append('th').text('loc.');
+          thead.append('th').text('leg');
           thead.append('th').text('comm');
           thead.append('th').text('turbo');
           thead.append('th').text('avoid.');
-          thead.append('th').text('battery');
+          thead.append('th').text('energy');
           thead.append('th').text('p temp.');
 
           const tbody = table.append('tbody');
           let cnt = 0;
-          for (const pid of plan.plan) {
-            const ws = wmap.get(pid);
+          for (const segment of plan.trip) {
             const tr = tbody.append('tr');
-            tr.append('td').text(ws.location);
-            tr.append('td').text(ws.comm);
-            tr.append('td').text(ws.turbo);
-            tr.append('td').text(ws.avoidance);
-            tr.append('td').text(plan.stats[cnt].battery);
+            tr.append('td').text(segment.leg.leg);
+            tr.append('td').text(segment.leg.comm);
+            tr.append('td').text(segment.leg.turbo);
+            tr.append('td').text(segment.leg.avoidance);
+            tr.append('td').text(segment.stats.energyReserve);
             tr.append('td').text(
-              plan.stats[cnt].payloadTemp ? plan.stats[cnt].payloadTemp.toFixed(2) : null
+              segment.stats.payloadTemperature ? segment.stats.payloadTemperature.toFixed(2) : '--'
             );
             cnt ++;
           }
@@ -394,5 +346,6 @@
         }, 1000);
 
     </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
 </body>
 </html>
