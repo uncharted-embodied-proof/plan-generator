@@ -13,6 +13,7 @@
         .message { margin-bottom: 5px; }
 
         .user-message {
+          font-size: 0.95rem;
           text-align: right;
           color: #FFAA28;
           background: #334; /* Darker background for user messages */
@@ -21,6 +22,7 @@
           margin-left: 1.5rem;
         }
         .bot-message {
+          font-size: 0.95rem;
           text-align: left;
           color: #A5D6A7; /* Light green for dark theme */
           background: #223; /* Even darker background for bot messages */
@@ -72,12 +74,52 @@
         </div>
     </div>
     <script>
+        async function streamJSONL(url) {
+          const res = await fetch(url);
+
+          if (!res.ok) {
+            throw new Error(`Failed: ${res.status}`);
+          }
+
+          const reader = res.body
+            .pipeThrough(new TextDecoderStream())
+            .getReader();
+
+          let buffer = "";
+
+          while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+            buffer += value;
+
+            const lines = buffer.split("\n");
+            buffer = lines.pop(); // keep incomplete line
+
+            for (const line of lines) {
+              if (!line.trim()) continue;
+
+              const obj = JSON.parse(line);
+              handle(obj);
+            }
+            await new Promise(r => setTimeout(r, 0));
+          }
+
+          // last line
+          if (buffer.trim()) {
+            handle(JSON.parse(buffer));
+          }
+        }
+
+        function handle(obj) {
+          console.log(obj);
+        }
+
+
         const chatHistory = document.getElementById('chat-history');
         const messageInput = document.getElementById('message-input');
         const sendButton = document.getElementById('send-button');
 
         let planId = '';
-        let plans = [];
         let world = {};
         let conversationHistory = [];
 
@@ -179,42 +221,41 @@
         }
 
         function prev() {
-          let idx = plans.findIndex(p => p.id === planId);
-          if (idx < 0) return;
-          idx --;
-          if (idx < 0) return;
+          const prevId = planId - 1;
+          fetch(`/plans/${prevId}`)
+            .then(d => d.json())
+            .then(d => {
+              viewPlan(d.plan);
+            });
 
-          const plan = plans[idx];
-          if (!plan) return;
-          planId = plan.id;
-          viewPlan(planId);
-          document.getElementById('plan-id').value = planId;
         }
         function next() {
-          let idx = plans.findIndex(p => p.id === planId);
-          if (idx < 0) return;
-          idx ++;
-          if (idx > plans.length - 1) return;
-
-          const plan = plans[idx];
-          if (!plan) return;
-          planId = plan.id;
-          viewPlan(planId);
-          document.getElementById('plan-id').value = planId;
+          const nextId = planId + 1;
+          fetch(`/plans/${nextId}`)
+            .then(d => d.json())
+            .then(d => {
+              viewPlan(d.plan);
+            });
         }
         function view() {
           const str = document.getElementById('plan-id').value;
-          planId = parseInt(str);
-          viewPlan(planId);
+          fetch(`/plans/${str}`)
+            .then(d => d.json())
+            .then(d => {
+              viewPlan(d.plan);
+            });
         }
 
 
-        function viewPlan(planId) {
-          const plan = plans.find(p => p.id === planId);
+        function viewPlan(plan) {
           if (!plan) return;
 
           const elem = d3.select('#plan-viewer');
           elem.selectAll('*').remove();
+
+
+          document.getElementById('plan-id').value = plan.id;
+          planId = plan.id;
 
           // elem.append('p').text(`Plan ${plan.id}`);
           elem.append('p').text(`Energy expensiture: ${plan.summary.energy}`);
@@ -264,6 +305,59 @@
         }).then(d => { return d.json()
         }).then(d => { world = d; });
 
+
+        async function streamJSONL(url) {
+          const res = await fetch(url);
+
+          if (!res.ok) {
+            throw new Error(`Failed: ${res.status}`);
+          }
+
+          const reader = res.body
+            .pipeThrough(new TextDecoderStream())
+            .getReader();
+
+          let buffer = "";
+
+          while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+            buffer += value;
+
+            const lines = buffer.split("\n");
+            buffer = lines.pop(); // keep incomplete line
+
+            for (const line of lines) {
+              if (!line.trim()) continue;
+
+              const obj = JSON.parse(line);
+              handle(obj);
+            }
+            await new Promise(r => setTimeout(r, 0));
+          }
+
+          // last line
+          if (buffer.trim()) {
+            handle(JSON.parse(buffer));
+          }
+        }
+
+        function handle(obj) {
+          console.log(obj);
+        }
+
+
+        fetch('/plans/1')
+          .then(d => d.json())
+          .then(d => {
+            setTimeout(() => {
+              viewPlan(d.plan);
+            }, 800);
+          });
+
+
+        // streamJSONL('plans.jsonl');
+        /*
         fetch('./plans.json', {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' }
@@ -277,6 +371,7 @@
             viewPlan(planId);
           }, 500);
         });
+        */
 
 
         async function sendMessage() {
@@ -287,6 +382,8 @@
             messageInput.value = '';
 
             try {
+                d3.select('#intro').remove();
+
                 const response = await fetch('/chat', {
                     method: 'POST',
                     headers: {

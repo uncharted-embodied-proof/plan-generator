@@ -357,6 +357,14 @@ app.get('/', (req, res) => {
   res.sendFile(path.resolve(process.cwd(), 'index.html'));
 });
 
+
+app.get('/plans/:id', (req, res) => {
+  const id = req.params.id || plans[0].id;
+  const plan = plans.find(d => d.id === +id);
+  res.send({ plan: plan});
+});
+
+
 app.post('/chat', async (req, res) => {
   const { message, history } = req.body;
 
