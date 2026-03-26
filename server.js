@@ -48,6 +48,7 @@ console.log(`# plans=${plans.length}`);
 console.log('');
 console.groupEnd();
 
+const ANSWER_MAX = 2200;
 let codeUseCount = 0;
 
 // const MODEL = "gemini-1.5-flash";
@@ -125,71 +126,94 @@ async function generateSearchCode(query) {
     model: codeModel,
     config: {
       systemInstruction: `
-        You are an expert in javascript coding and json formats. Your job is to generate JS code to evaulate over the following JSONs
+        You are an expert in javascript coding and json formats. Your job is to generate JS code to evaulate over the following JSON data structure.
 
-        world.json looks like:
-        - the elements in nodes represent possible configurations
-        - the temperature here refer to the temperature at the lcation, not the payload temperature
+        ## plans structure
+        The summary section describes the plan's overall metrics, assuming that all legs of the trip are completed.
 
-        {
-          nodes: [ 
-            { 
-              id: number, 
-              leg: string,
-              weather: good | bad,
-              turbo: 1 | 0, 
-              comm: 1 | 0, 
-              avoidance: 1 | 0,
-              cond: 1 | 0,
-              distance: number, 
-              difficulty: number, 
-              temperature: number,
-            }, ... 
-          ],
-          edges: [ { source, target }, ... ]
-        }
-
-        plans.json looks like:
+        The trip array describes details and running totals after completing each leg of the trip
+        - trip[].leg describes the drone configuration for that leg
+        - trip[].stats describes the intermediate stats after completing the leg
 
         [
           {
-            id: number,
-            summary: {
-              time: number,
-              energy: number,
-              difficulty: number,
-              deliveryTime: number,
-              deliveryTimeMargin: number,
-              payloadDeliveryTimeSafety: number,
-              bloodIntegrity: number,
-              droneSafety: number,
-              routeSafety: number,
-              assetSafety: number,
-              patientSurvival: number,
-              energyReserve: number,
-              payloadTemperatureDeviation: number,
+            "id": 90112,
+            "summary": {
+              /* The total time for the trip */
+              "time": number,
 
-              totalTurbo: number,
-              totalAvoid: number,
-              totalCond: number,
-              totalComm: number
+              /* The total amount of energy used during the trip */
+              "energy": number,
+
+               /* The time when package is delivered */
+              "deliveryTime": number,
+
+              /* The percentage of energy left for the trip */
+              "energyReserve": number,
+
+              /* Margin of time error, positive values are good, negative values are bad */
+              "deliveryTimeMargin": number,
+
+              /* Safety metrics, these are normalized between 1 (good) and 0 (not good)  */
+              "payloadDeliveryTimeSafety": number,
+              "bloodIntegrity": number,
+              "droneSafety": number,
+              "dronePowerSafety": number,
+              "droneBatterySafety": number,
+              "routeSafety": number,
+              "temperatureSafety": number,
+              "ascentSafety": number,
+              "windSafety": number,
+              "payloadTemperatureDeviation": number,
+
+              /* asset safety and patient survivial are important ranking metrics */
+              "assetSafety": number,
+              "patientSurvival": number,
+
+
+              /* How many times (or percentage of times) a feature has been turned on */
+              "totalTurbo": number,
+              "totalAvoid": number,
+              "totalCond": number,
+              "totalComm": number,
+              "percentTurbo": number,
+              "percentAvoid": number,
+              "percentCond": number,
+              "percentComm": number,
+              "difficulty": number
             },
-            stats: [
-              { leg: string, travelTime: number, energyReserve: number, payloadTemperature: number },
-              { leg: string, travelTime: number, energyReserve: number, payloadTemperature: number },
+            "trip": [
+              {
+                "leg": {
+                  "comm": number, 0 or 1
+                  "avoidance": number, 0 or 1
+                  "turbo": number, 0 or 1
+                  "cond": number, 0 or 1
+
+                  "leg": string,
+                  "distance": number,
+                  "weather": string,
+                  "difficulty": number,
+                  "temperature": number,
+                  "id": number
+                },
+                "stats": {
+                  "travelTime": number,
+                  "payloadTemperature": number,
+                  "energyReserve": number,
+                  "payloadTemperatureLoad": number,
+                  "droneBatteryLoad": number,
+                  "dronePowerLoad": number,
+                  "droneWindLoad": number,
+                  "droneTemperatureLoad": number,
+                  "difficulty": number
+                }
+              },
               ...
-            ],
-            plan: [
-              number, number, number, ...
             ]
-          },
-          ...
+          }
         ]
 
-
-        The plan array references the nodes in the world.json structure, 
-
-        The stats array contains up-to-date summary metrics at a given step, for example if we want to see how much energy is left or what is the payload temperature when we reached location X, we would check the last occurrence of X in the stats array, and check if the field values satisfiy our criteria. For example:
 
         example query:  
           For COA 2345, what is my energyReserve when I reach location Y?
@@ -198,7 +222,7 @@ async function generateSearchCode(query) {
           let plan = plans.find(p => p.id === 2345);
           let result = '';
           if (plan) {
-            let waypoint = plan.stats.findLast(s => s.leg[1] === 'Y');
+            let waypoint = plan.trip.findLast(s => s.leg.leg[1] === 'Y');
             if (waypoint) { 
               result = waypoint;
             }
@@ -206,7 +230,7 @@ async function generateSearchCode(query) {
           } else {
             result = "plan not found"
           }
-          result;
+          result.stats.energyReserve;
 
 
         example query:
@@ -216,28 +240,18 @@ async function generateSearchCode(query) {
           let cnt = 0
           
           for (const plan of plans) {
-            const zoneStat = p.stats.findLast(s => s.leg[1] === 'Y')
-            if (zoneStat.energyReserve < 0.5) {
+            const zoneStat = p.trip.findLast(s => s.leg.leg[1] === 'Y')
+            if (zoneStat.stats.energyReserve < 0.5) {
               cnt ++;
             }
           }
           cnt;
           
         
-
-        The code should look for node objects in world.json if the question is about the world. 
-        The code should look for plan objects in plans.json if the question is about flight plans/paths
-
-
         General hints:
-        When the query asks for a number, eg: "how many ...", "number of ...". Return a short text summary.
-
-        
-
-        - When the query asking time related questions, it is important to distinguish between deliveryTime and time. When the query is asking about target/destination, the time metric to be evaluated is usually "summary.deliveryTime"
+        - When the query asks for a number, eg: "how many ...", "number of ...". Return a short text summary.
         - When the query ask for details or configurations, return the full plan objects, the "plan" array should be converted to the world nodes that the element ids reference.
         - Do not return a list of objects unless explictedly asked to do so.
-
 
         Important:
         - Assume you have global variables "world" and "plans' as specified above, return the javascript code
@@ -314,7 +328,7 @@ async function runTool(name, args) {
           ${toolResultText}
 
           === Tool answer (Long answers may be cut off) === 
-          ${JSON.stringify(evalResult).substring(0, 2500)}
+          ${JSON.stringify(evalResult).substring(0, ANSWER_MAX)}
         `
       };
     }
@@ -455,29 +469,19 @@ app.post('/chat', async (req, res) => {
             For ranking plans, look at patientSurvival and assetSafety as the most important indicators. Here the higher the value the more desirable this plan is. Note this is a desirability of the plan, not an indication of whether the plan is valid or not.
 
 
-            !! Important !!
-            If the operator asks about constraints, tradeoffs, and variables, answer the question directly, do not call a Tool. 
+            General hints
+            - The terms "plan" and "COA" are equivalent, if the operator is asking about COAs they are asking about plans
 
-            !! Important !!
-            The terms "plan" and "COA" are equivalent, if the operator is asking about COAs they are asking about plans
+            - When the query asking time related questions, it is important to distinguish between deliveryTime and time. When the query is asking about target/destination, the time metric to be evaluated is usually "summary.deliveryTime"
 
+            - If the operator asks about constraints, tradeoffs, and variables, answer the question directly, do not call a Tool. 
 
-            !! Important !!
-            When a tool returns a response, interpret the result and provide the final answer to the user. 
-            Do not call another tool unless absolutely necessary.
+            - When a tool returns a response, interpret the result and provide the final answer to the user. Do not call another tool unless absolutely necessary.
 
-            If the user asked for a specific plan, eg: "show me plan x", and we have an object representation, just interpret it, do not use anotehr tool
+            Important 
+            - For queries unrelated to plans, graphs, navigation, do not use any tools, just reply that the question is outside of your operating parameters.
+            - Be concise in your answers unless otherwise noted.
 
-
-            !! Important !!
-            Do not interpret the query as "returning all plans", anything that require logic logical filtering should use the "generate_search_code" tool
-
-
-            !! Important !!
-            For queries unrelated to plans, graphs, navigation, do not use any tools, just reply that the question is outside of your operating parameters.
-
-
-            Be concise in your answers unless otherwise noted.
           `,
           temperature: 0.5,
           tools: tools,
