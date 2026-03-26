@@ -13,7 +13,6 @@ function printPlan(plan, nodes) {
   }
 }
 
-
 function cartesianObject(obj) {
   const keys = Object.keys(obj);
 
@@ -44,6 +43,7 @@ const model = {
 
 
 const waypoints = ['X', 'A', 'B', 'C', 'D', 'Y'];
+// const waypoints = ['X', 'B', 'C', 'D', 'Y'];
 const legs = [
   // first half
   {
@@ -117,6 +117,15 @@ function getNextLocations(v) {
   if (v === 'D') return ['Y', 'X'];
 }
 
+// function getNextLocations(v) {
+//   if (v === 'X') return ['B', 'C', 'D'];
+//   if (v === 'Y') return ['B', 'C', 'D'];
+//   if (v === 'B') return ['Y', 'X'];
+//   if (v === 'C') return ['Y', 'X'];
+//   if (v === 'D') return ['Y', 'X'];
+// }
+
+
 
 function neighbourNodes(locationId, worldStates) {
   const nextLocations = getNextLocations(locationId);
@@ -146,47 +155,6 @@ worldStates.forEach(s => {
     });
   });
 });
-
-
-
-
-
-// waypoints.forEach(z => {
-//   const permutations = cartesianObject(model);
-//   permutations.forEach(p => {
-//     worldStates.push({
-//       ...p,
-//       location: z,
-//       id: ++cnt
-//     });
-//   });
-// });
-
-
-
-// Do some pruning so we don't explode the state space too much
-// 1 - Remove comm variability at start (X)
-// 2 - Remove avoidance variability at start (X)
-// worldStates = worldStates.filter(ws => {
-//   if (ws.avoidcance === 1 && ws.location === 'X') return false;
-//   if (ws.comm === 1 && ws.location === 'X') return false;
-// 
-//   if (ws.avoidcance === 1 && ws.location === 'Y') return false;
-//   if (ws.comm === 1 && ws.location === 'Y') return false;
-// 
-//   return true;
-// });
-
-
-
-// worldStates.forEach(s => {
-//   neighbourNodes(s.location, worldStates).forEach(s2 => {
-//     worldEdges.push({
-//       source: s.id,
-//       target: s2.id
-//     });
-//   });
-// });
 
 
 const world = { nodes: worldStates, edges: worldEdges };
@@ -365,7 +333,7 @@ console.log('# pruned plans (irrelevant payload condition)', rawPlansThatReached
 
 /* Score the plans with user criteria */
 const P_base = 1000;
-const P_boost = 650;
+const P_boost = 200;
 const P_payload = 1000;
 const P_comms = 8;
 const P_avoid = 20;
@@ -377,11 +345,12 @@ const T_min = -10;
 const c_cond = 0.2;
 const c_payload = 4200;
 const v_base = 10.0;
-const v_boost = 18.0;
+
+const v_boost = 24.0; // originally 18.0
 const v_ascent_max = 5.0;
 const v_wind_max = 8.0;
 
-const E_full = 780 * 2;  // FIXME: Fudeged x2, check with Nelson
+const E_full = 780;
 const E_empty = 0;
 
 const p_preserve = 10;
@@ -392,8 +361,7 @@ const T_payload_max = 6.0;
 const T_payload_min = 2.0;
 
 
-const t_payload_max = 1000;
-
+const t_payload_max = 14 * 60;
 
 
 
@@ -443,7 +411,7 @@ const plans = expandedPlans.map((p, i) => {
     totalComm += f_comms;
 
 
-    const travelTime = ws.distance / ((1 - ws.turbo) * v_base + ws.turbo* v_boost);
+    const travelTime = ws.distance / ((1 - ws.turbo) * v_base + ws.turbo * v_boost);
 
     const powerConsumption = (
       P_base +
@@ -505,7 +473,9 @@ const plans = expandedPlans.map((p, i) => {
     });
 
     //  Finall compute if we completed the delivery
-    if (goals.includes(pid)) {
+    // console.log('!!!', goals);
+    // if (goals.includes(pid)) {
+    if (ws.leg[1] === 'Y') {
       dropped = true;
     }
   }
@@ -597,7 +567,8 @@ console.log('# of total plans', plans.length);
 
 // Sample on a 2D grid according to metrics
 let sampledPlans = plans.filter(p => {
-  return p.summary.energyReserve >= -0.1;
+  // return p.summary.energyReserve >= -0.2;
+  return true;
 });
 
 
@@ -666,8 +637,26 @@ function* stringifyArray(arr) {
   yield "]";
 }
 
-fs.writeFileSync('./world.json', JSON.stringify(world),  'utf8');
+async function writeArrayToJSONL(filePath, dataArray) {
+  const stream = fs.createWriteStream(filePath, { encoding: 'utf8' });
 
+  for (const item of dataArray) {
+    const jsonLine = JSON.stringify(item) + '\n';
+
+    if (!stream.write(jsonLine)) {
+      await new Promise(resolve => stream.once('drain', resolve));
+    }
+  }
+
+  stream.end();
+
+  return new Promise((resolve, reject) => {
+    stream.on('finish', resolve);
+    stream.on('error', reject);
+  });
+}
+
+/*
 const stream = fs.createWriteStream("./plans.json");
 for (const chunk of stringifyArray(sampledPlans)) {
   stream.write(chunk);
@@ -690,7 +679,25 @@ stream.on("finish", () => {
   console.log(`Asset Safety:; [${minAssetSafety}, ${maxAssetSafety}]`);
 
 });
-// fs.writeFileSync('./locations.json', JSON.stringify(locationGraph),  'utf8');
+*/
+
 fs.writeFileSync('./legs.json', JSON.stringify(worldLegs),  'utf8');
+fs.writeFileSync('./world.json', JSON.stringify(world),  'utf8');
 
+await writeArrayToJSONL('plans.jsonl', sampledPlans); 
+console.log('all done');
 
+const [minEnergy, maxEnergy] = findExtent(sampledPlans, 'energyReserve');
+const [minTime, maxTime] = findExtent(sampledPlans, 'time');
+const [minDifficulty, maxDifficulty] = findExtent(sampledPlans, 'difficulty');
+const [minMargin, maxMargin] = findExtent(sampledPlans, 'deliveryTimeMargin');
+const [minPatientSurvival, maxPatientSurvival] = findExtent(sampledPlans, 'patientSurvival');
+const [minAssetSafety, maxAssetSafety] = findExtent(sampledPlans, 'assetSafety');
+
+console.log('=== stats ===');
+console.log(`Energy Used: [${minEnergy}, ${maxEnergy}]`);
+console.log(`Difficulty:[${minDifficulty}, ${maxDifficulty}]`);
+console.log(`Delivery Margin:[${minMargin}, ${maxMargin}]`);
+console.log(`Time Used: [${minTime}, ${maxTime}]`);
+console.log(`Patient Surivival: [${minPatientSurvival}, ${maxPatientSurvival}]`);
+console.log(`Asset Safety:; [${minAssetSafety}, ${maxAssetSafety}]`);

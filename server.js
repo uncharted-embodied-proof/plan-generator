@@ -2,13 +2,44 @@ import dotenv from "dotenv";
 import express from "express";
 import { GoogleGenAI } from "@google/genai";
 import fs from "fs";
+import readline from 'readline';
 import path from "path";
 import { spawn } from 'child_process';
+
+
+async function readJSONL(filePath, onObject) {
+  const stream = fs.createReadStream(filePath, { encoding: 'utf8' });
+  const rl = readline.createInterface({
+    input: stream,
+    crlfDelay: Infinity
+  });
+
+  for await (const line of rl) {
+    if (!line.trim()) continue; // skip empty lines
+    try {
+      const obj = JSON.parse(line);
+      await onObject(obj); // process each object
+    } catch (err) {
+      console.error('Invalid JSON line:', line);
+    }
+  }
+}
+
+async function readJSONLToArray(filePath) {
+  const results = [];
+  await readJSONL(filePath, (obj) => {
+    results.push(obj);
+  });
+  return results;
+}
+
 
 dotenv.config();
 
 const world = JSON.parse(fs.readFileSync('./world.json', 'utf8'));
-const plans = JSON.parse(fs.readFileSync('./plans.json', 'utf8'));
+// const plans = JSON.parse(fs.readFileSync('./plans.jsonl', 'utf8'));
+//
+const plans = await readJSONLToArray('./plans.jsonl');
 
 
 console.group('==== Data Stats ===');
@@ -481,7 +512,17 @@ app.post('/chat', async (req, res) => {
       }
     } catch (err) {
       console.log(`LLM errored out somewhere, ${err}`);
-      responseText = 'Soemthing bad happened...we probably hit a rate limit';
+
+      const status = err?.status || err?.response?.status;
+      if (status) {
+        if (status == 429 || status >= 500) {
+          responseText = 'Soemthing bad happened...we probably hit a service-level rate limit';
+        }
+        responseText = `Soemthing bad happened, status code =${status} `;
+      } else {
+        responseText = 'Error in analytic execution, try rephraasing your query to be more exact';
+      }
+
       break;
     }
   }
