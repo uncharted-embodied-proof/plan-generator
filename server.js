@@ -21,14 +21,13 @@ let codeUseCount = 0;
 
 // const MODEL = "gemini-1.5-flash";
 // const MODEL = "gemini-2.5-flash"; 
-const MODEL = "gemini-2.5-flash-lite";
-// const MODEL = "gemini-3.1-flash-lite-preview";
+// const MODEL = "gemini-2.5-flash-lite";
+const MODEL = "gemini-3.1-flash-lite-preview";
 
 // const CODE_MODEL = "gemini-2.5-flash-lite";
 const CODE_MODELS = [
-  "gemini-3-flash-preview",
   "gemini-3.1-flash-lite-preview",
-  "gemini-2.5-flash",
+  "gemini-2.5-flash-lite",
 ];
 
 
@@ -105,7 +104,7 @@ async function generateSearchCode(query) {
           nodes: [ 
             { 
               id: number, 
-              location: string,
+              leg: string,
               weather: good | bad,
               turbo: 1 | 0, 
               comm: 1 | 0, 
@@ -120,8 +119,6 @@ async function generateSearchCode(query) {
         }
 
         plans.json looks like:
-        - the plan array references the nodes in the world.json structure, 
-        - the stats array is a cumulative state after each step in plan
 
         [
           {
@@ -147,8 +144,8 @@ async function generateSearchCode(query) {
               totalComm: number
             },
             stats: [
-              { travelTime: number, battery: number, payloadTemp: number },
-              { travelTime: number, battery: number, payloadTemp: number },
+              { leg: string, travelTime: number, energyReserve: number, payloadTemperature: number },
+              { leg: string, travelTime: number, energyReserve: number, payloadTemperature: number },
               ...
             ],
             plan: [
@@ -159,25 +156,63 @@ async function generateSearchCode(query) {
         ]
 
 
+        The plan array references the nodes in the world.json structure, 
+
+        The stats array contains up-to-date summary metrics at a given step, for example if we want to see how much energy is left or what is the payload temperature when we reached location X, we would check the last occurrence of X in the stats array, and check if the field values satisfiy our criteria. For example:
+
+        example query:  
+          For COA 2345, what is my energyReserve when I reach location Y?
+
+        example code: 
+          let plan = plans.find(p => p.id === 2345);
+          let result = '';
+          if (plan) {
+            let waypoint = plan.stats.findLast(s => s.leg[1] === 'Y');
+            if (waypoint) { 
+              result = waypoint;
+            }
+            result = "Cannot find location in the COA"
+          } else {
+            result = "plan not found"
+          }
+          result;
+
+
+        example query:
+          How many COAs have energy reserve less than 0.5 when we reach Y
+
+        example code:
+          let cnt = 0
+          
+          for (const plan of plans) {
+            const zoneStat = p.stats.findLast(s => s.leg[1] === 'Y')
+            if (zoneStat.energyReserve < 0.5) {
+              cnt ++;
+            }
+          }
+          cnt;
+          
+        
 
         The code should look for node objects in world.json if the question is about the world. 
         The code should look for plan objects in plans.json if the question is about flight plans/paths
 
-        If the query is asking for a number, eg: "how many ...", "number of ...". Return a short summary.
 
-        Important!! Do not return a list of objects unless explictedly asked to do so.
-
-        When the query asking time related questions, it is important to distinguish between deliveryTime and time. When the query is asking about target/destination, the time metric to be evaluated is usually "summary.deliveryTime"
+        General hints:
+        When the query asks for a number, eg: "how many ...", "number of ...". Return a short text summary.
 
         
-        When the query ask for details or configurations, return the full plan objects, the "plan" array should be converted to the world nodes that the element ids reference.
 
-        Assume you have global variables "world" and "plans' as specified above, return the javascript code
-        The last line of the code should be the answer
+        - When the query asking time related questions, it is important to distinguish between deliveryTime and time. When the query is asking about target/destination, the time metric to be evaluated is usually "summary.deliveryTime"
+        - When the query ask for details or configurations, return the full plan objects, the "plan" array should be converted to the world nodes that the element ids reference.
+        - Do not return a list of objects unless explictedly asked to do so.
 
-        Return plain-text, not markdown
 
-        Be concise in your answers unless otherwise noted.
+        Important:
+        - Assume you have global variables "world" and "plans' as specified above, return the javascript code
+        - The last line of the code should be the answer
+        - Return in plain-text format, not markdown
+        - Be concise in your answers unless otherwise noted.
       `,
       temperature: 0.4
     },
@@ -218,6 +253,8 @@ async function runTool(name, args) {
     console.log('>> calling JS tool:', query);
 
     const toolResultText = await generateSearchCode(query);
+
+    console.log('generated', toolResultText);
 
 
     if (toolResultText) {
@@ -286,7 +323,7 @@ app.post('/chat', async (req, res) => {
   let responseText = '';
 
   console.log('');
-  console.group('>> processing chat');
+  console.group(`>> [${new Date()}] processing chat`);
   console.log(`query: ${message}`);
 
   const contents = [...history, { role: "user", parts: [{ text: message }] }];
@@ -376,13 +413,15 @@ app.post('/chat', async (req, res) => {
                 percentCond,f_cond,1
                 percentComm,f_comm,1
 
-            Note patientSurvival, assetSafety, routeSafety, droneSafety, bloodIntegrity are safety metrics with values between [0, 1], the higher the better. With payloadTemperatureDeviation the values closer to 0 are better.
 
-            The variables that we can physically change are:
+            The variables that the operator can control are:
             - f_turbo
             - f_avoid
             - f_comm
             - f_cond
+
+            
+            For ranking plans, look at patientSurvival and assetSafety as the most important indicators. Here the higher the value the more desirable this plan is. Note this is a desirability of the plan, not an indication of whether the plan is valid or not.
 
 
             !! Important !!

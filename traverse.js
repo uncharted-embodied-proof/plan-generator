@@ -51,28 +51,28 @@ const legs = [
     distance: 17000,
     weather: 'good',
     difficulty: 29,
-    temperature: 18
+    temperature: 83
   },
   {
     leg: 'XB', 
     distance: 10000,
     weather: 'bad',
-    difficulty: 29,
-    temperature: 10
+    difficulty: 281,
+    temperature: 30
   },
   {
     leg: 'XC',
     distance: 10000,
     weather: 'good',
-    difficulty: 29,
-    temperature: 11
+    difficulty: 763,
+    temperature: 5.0 
   },
   {
     leg: 'XD', 
     distance: 12000,
     weather: 'good',
-    difficulty: 29,
-    temperature: 12
+    difficulty: 1302,
+    temperature: 8.0
   },
 
   // second half
@@ -80,28 +80,28 @@ const legs = [
     leg: 'AY',
     distance: 8400,
     weather: 'good',
-    difficulty: 112,
+    difficulty: 1480,
     temperature: 18 
   },
   {
     leg: 'BY',
     distance: 8000,
     weather: 'bad',
-    difficulty: 310,
-    temperature: 10
+    difficulty: 1282,
+    temperature: 50
   },
   {
     leg: 'CY',
     distance: 11000,
     weather: 'good',
-    difficulty: 792 ,
-    temperature: 5
+    difficulty: 800,
+    temperature: 5.0
   },
   {
     leg: 'DY',
     distance: 7000,
     weather: 'good',
-    difficulty: 1331,
+    difficulty: 261,
     temperature: 8
   }
 ];
@@ -381,7 +381,7 @@ const v_boost = 18.0;
 const v_ascent_max = 5.0;
 const v_wind_max = 8.0;
 
-const E_full = 780;
+const E_full = 780 * 2;  // FIXME: Fudeged x2, check with Nelson
 const E_empty = 0;
 
 const p_preserve = 10;
@@ -415,7 +415,7 @@ const plans = expandedPlans.map((p, i) => {
 
   let dropped = false;
   let currentTemperature = T_payload_mid;
-  let stats = [];
+  let trip = [];
 
   let totalComm = 0;
   let totalAvoid = 0;
@@ -457,13 +457,13 @@ const plans = expandedPlans.map((p, i) => {
 
     const energyConsumption = powerConsumption * travelTime / 3600;
 
-    const batteryLevel = (E_full - energyConsumption) / E_full;
+    const batteryLevel = (E_full - energyConsumption); 
 
     const droneTemperatureLoad = (T_zone - 0.5 * (T_max + T_min)) / (0.5 * (T_max - T_min));
 
     const dronePowerLoad = powerConsumption / P_max;
 
-    const droneBatteryLoad = batteryLevel;
+    const droneBatteryLoad = batteryLevel / E_full;
 
     const droneWindLoad = v_wind_zone / v_wind_max;
 
@@ -487,19 +487,21 @@ const plans = expandedPlans.map((p, i) => {
      * b - battery remaining
      * t - payload temperature
     */
-    stats.push({
-      leg: ws.leg,
-      travelTime: +travelTime.toFixed(2),
-      payloadTemperature: dropped ? null : +currentTemperature.toFixed(2),
-      energyReserve: +((E_full - totalEnergy) / E_full).toFixed(2),
+    trip.push({
+      leg: ws,
 
+      stats: {
+        travelTime: +travelTime.toFixed(2),
+        payloadTemperature: dropped ? null : +currentTemperature.toFixed(2),
+        energyReserve: +((E_full - totalEnergy) / E_full).toFixed(2),
 
-      payloadTemperatureLoad: +payloadTemperatureLoad.toFixed(2),
-      droneBatteryLoad: +droneBatteryLoad.toFixed(2),
-      dronePowerLoad: +dronePowerLoad.toFixed(2),
-      droneWindLoad: +droneWindLoad.toFixed(2),
-      droneTemperatureLoad: +droneTemperatureLoad.toFixed(2),
-      difficulty: +difficulty.toFixed(2),
+        payloadTemperatureLoad: +payloadTemperatureLoad.toFixed(2),
+        droneBatteryLoad: +droneBatteryLoad.toFixed(2),
+        dronePowerLoad: +dronePowerLoad.toFixed(2),
+        droneWindLoad: +droneWindLoad.toFixed(2),
+        droneTemperatureLoad: +droneTemperatureLoad.toFixed(2),
+        difficulty: +difficulty.toFixed(2),
+      }
     });
 
     //  Finall compute if we completed the delivery
@@ -508,28 +510,28 @@ const plans = expandedPlans.map((p, i) => {
     }
   }
 
-  const zoneTimes = stats.map(d => d.travelTime);
-  const payloadSafety = SAFETYFUNC(stats.map(d => d.payloadTemperatureLoad), zoneTimes, totalTime);
+  const zoneTimes = trip.map(d => d.stats.travelTime);
+  const payloadSafety = SAFETYFUNC(trip.map(d => d.stats.payloadTemperatureLoad), zoneTimes, totalTime);
 
 
   let payloadDeliveryTimeSafety = (Math.exp(deliveryTime / totalTime)  - 1) / (Math.exp(1) - 1)
   payloadDeliveryTimeSafety = Math.max(0, 1 - payloadDeliveryTimeSafety);
 
-  const droneBatterySafety = SAFETYFUNC(stats.map(d => d.droneBatteryLoad), zoneTimes, totalTime); 
-  const dronePowerSafety = SAFETYFUNC(stats.map(d => d.dronePowerLoad), zoneTimes, totalTime);
+  const droneBatterySafety = SAFETYFUNC(trip.map(d => d.stats.droneBatteryLoad), zoneTimes, totalTime); 
+  const dronePowerSafety = SAFETYFUNC(trip.map(d => d.stats.dronePowerLoad), zoneTimes, totalTime);
   const droneSafety = 0.5 * (droneBatterySafety + dronePowerSafety);
 
-  const temperatureSafety = SAFETYFUNC(stats.map(d => d.droneTemperatureLoad), zoneTimes, totalTime); 
-  const ascentSafety = SAFETYFUNC(stats.map(d => d.difficulty), zoneTimes, totalTime);
-  const windSafety = SAFETYFUNC(stats.map(d => d.droneWindLoad), zoneTimes, totalTime); 
+  const temperatureSafety = SAFETYFUNC(trip.map(d => d.stats.droneTemperatureLoad), zoneTimes, totalTime); 
+  const ascentSafety = SAFETYFUNC(trip.map(d => d.stats.difficulty), zoneTimes, totalTime);
+  const windSafety = SAFETYFUNC(trip.map(d => d.stats.droneWindLoad), zoneTimes, totalTime); 
   const routeSafety = 0.3333 * (temperatureSafety + windSafety + ascentSafety);
 
   const assetSafety = 0.5 * (droneSafety + routeSafety);
   const patientSafety = 0.5 * (payloadSafety + payloadDeliveryTimeSafety);
 
 
-  const maxTemp = Math.max(...stats.map(s => s.payloadTemperature).filter(Boolean));
-  const minTemp = Math.min(...stats.map(s => s.payloadTemperature).filter(Boolean));
+  const maxTemp = Math.max(...trip.map(s => s.stats.payloadTemperature).filter(Boolean));
+  const minTemp = Math.min(...trip.map(s => s.stats.payloadTemperature).filter(Boolean));
   let tempDeviation = 0;
   if (maxTemp < T_payload_min) { 
     const delta = Math.abs(maxTemp - T_payload_min);
@@ -586,17 +588,19 @@ const plans = expandedPlans.map((p, i) => {
 
       difficulty: +(totalDifficulty.toFixed(2))
     },
-    stats,
-    plan: p 
+    trip: trip
+    // plan: p 
   }
 });
-
-
 console.log('# of total plans', plans.length);
 
 
 // Sample on a 2D grid according to metrics
-let sampledPlans = plans;
+let sampledPlans = plans.filter(p => {
+  return p.summary.energyReserve >= -0.1;
+});
+
+
 if (process.argv.length === 3) {
   sampledPlans = [];
 
@@ -627,23 +631,7 @@ if (process.argv.length === 3) {
   console.log('# pruned plans (after grid-based sampling)', sampledPlans.length);
 } 
 
-
-// Build a location topology 
-const locationGraph = {
-  nodes: [],
-  edges: []
-};
-
-['X', 'Y', 'A', 'B', 'C', 'D'].forEach(location => {
-  locationGraph.nodes.push({ id: location });
-  const targets = getNextLocations(location );
-
-  targets.forEach(t => {
-    locationGraph.edges.push({
-      source: location, target: t
-    });
-  });
-});
+console.log('# of total sampled plans', sampledPlans.length);
 
 
 
@@ -686,8 +674,7 @@ for (const chunk of stringifyArray(sampledPlans)) {
 }
 stream.end();
 stream.on("finish", () => {
-
-  const [minEnergy, maxEnergy] = findExtent(sampledPlans, 'energy');
+  const [minEnergy, maxEnergy] = findExtent(sampledPlans, 'energyReserve');
   const [minTime, maxTime] = findExtent(sampledPlans, 'time');
   const [minDifficulty, maxDifficulty] = findExtent(sampledPlans, 'difficulty');
   const [minMargin, maxMargin] = findExtent(sampledPlans, 'deliveryTimeMargin');
@@ -702,61 +689,8 @@ stream.on("finish", () => {
   console.log(`Patient Surivival: [${minPatientSurvival}, ${maxPatientSurvival}]`);
   console.log(`Asset Safety:; [${minAssetSafety}, ${maxAssetSafety}]`);
 
-
-
-  /*
-  const minEnergy = Math.min(...sampledPlans.map(p => p.summary.energy));
-  const maxEnergy = Math.max(...sampledPlans.map(p => p.summary.energy));
-  const minTime = Math.min(...sampledPlans.map(p => p.summary.time));
-  const maxTime = Math.max(...sampledPlans.map(p => p.summary.time));
-  const minDifficulty = Math.min(...sampledPlans.map(p => p.summary.difficulty));
-  const maxDifficulty = Math.max(...sampledPlans.map(p => p.summary.difficulty));
-
-  const minMargin = Math.min(...sampledPlans.map(p => p.summary.deliveryTimeMargin));
-  const maxMargin = Math.max(...sampledPlans.map(p => p.summary.deliveryTimeMargin));
-
-  const minAssetSafety = Math.min(...sampledPlans.map(p => p.summary.assetSafety));
-  const maxAssetSafety = Math.max(...sampledPlans.map(p => p.summary.assetSafety));
-
-  const minPatientSafety = Math.min(...sampledPlans.map(p => p.summary.patientSurvival));
-  const maxPatientSafety = Math.max(...sampledPlans.map(p => p.summary.patientSurvival));
-
-  const minDroneSafety = Math.min(...sampledPlans.map(p => p.summary.droneSafety));
-  const maxDroneSafety = Math.max(...sampledPlans.map(p => p.summary.droneSafety));
-
-  const minEnergyReserve = Math.min(...sampledPlans.map(p => p.summary.energyReserve));
-  const maxEnergyReserve = Math.max(...sampledPlans.map(p => p.summary.energyReserve));
-
-  const minTempDeviation = Math.min(...sampledPlans.map(p => p.summary.payloadTemperatureDeviation));
-  const maxTempDeviation = Math.max(...sampledPlans.map(p => p.summary.payloadTemperatureDeviation));
-
-
-  console.log('');
-  console.log("plans.json written");
-  console.log('');
-  console.log(`Time Used: [${minTime}, ${maxTime}]`);
-  console.log(`Difficulty:[${minDifficulty}, ${maxDifficulty}]`);
-  console.log(`Delivery Margin:[${minMargin}, ${maxMargin}]`);
-  console.log(`Asset Safety:[${minAssetSafety}, ${maxAssetSafety}]`);
-  console.log(`Patient Safety:[${minPatientSafety}, ${maxPatientSafety}]`);
-  console.log(`Drone Safety:[${minDroneSafety}, ${maxDroneSafety}]`);
-  console.log(`Reserve :[${minEnergyReserve}, ${maxEnergyReserve}]`);
-  console.log(`Temp deviation: [${minTempDeviation}, ${maxTempDeviation}]`);
-  */
-
-  /*
-  for (let i = 0; i < sampledPlans.length; i += 1) {
-    if (sampledPlans[i].summary.payloadTemperatureDeviation !== 0) {
-      console.log('>>', sampledPlans[i].summary.payloadTemperatureDeviation); 
-    }
-  }
-  */
-
-  // console.log(sampledPlans[222]);
-  // printPlan(sampledPlans[222], world.nodes);
-  // const test = new Set(sampledPlans.map(p => p.summary.difficulty));
-  // console.log(test);
-
 });
-fs.writeFileSync('./locations.json', JSON.stringify(locationGraph),  'utf8');
+// fs.writeFileSync('./locations.json', JSON.stringify(locationGraph),  'utf8');
+fs.writeFileSync('./legs.json', JSON.stringify(worldLegs),  'utf8');
+
 
