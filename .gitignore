@@ -4,4 +4,6 @@ node_modules
 # output files
 world.json
 plans.json
+plans.jsonl
+legs.json
 locations.json
