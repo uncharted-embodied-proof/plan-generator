@@ -523,14 +523,17 @@ app.post('/chat', async (req, res) => {
         break;
       }
     } catch (err) {
+      // console.log('debug', typeof err);
+      // console.log('debug', JSON.stringify(err));
       console.log(`LLM errored out somewhere, ${err}`);
 
-      const status = err?.status || err?.response?.status;
+      const status = err?.status || err?.response?.status || error?.error?.code;
       if (status) {
         if (status == 429 || status >= 500) {
           responseText = 'Soemthing bad happened...we probably hit a service-level rate limit';
+        } else {
+          responseText = `Soemthing bad happened, status code =${status} `;
         }
-        responseText = `Soemthing bad happened, status code =${status} `;
       } else {
         responseText = 'Error in analytic execution, try rephraasing your query to be more exact';
       }

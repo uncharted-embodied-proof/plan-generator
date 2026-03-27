@@ -219,7 +219,6 @@
             }
           }
         }
-
         function prev() {
           const prevId = planId - 1;
           fetch(`/plans/${prevId}`)
@@ -257,12 +256,17 @@
           document.getElementById('plan-id').value = plan.id;
           planId = plan.id;
 
-          // elem.append('p').text(`Plan ${plan.id}`);
-          elem.append('p').text(`Energy expensiture: ${plan.summary.energy}`);
-          elem.append('p').text(`Time margin: ${plan.summary.deliveryTimeMargin}`);
-          elem.append('p').text(`Temperature deviation: ${plan.summary.payloadTemperatureDeviation}`);
+
+          elem.append('h5').text('Summary');
+          const ul = elem.append('ul');
+          ul.append('li').text(`Patient survival: ${plan.summary.patientSurvival.toFixed(2)}`);
+          ul.append('li').text(`Asset safety: ${plan.summary.assetSafety.toFixed(2)}`);
+          ul.append('li').text(`Energy reserve: ${plan.summary.energyReserve}`);
+          ul.append('li').text(`Delivery time margin: ${plan.summary.deliveryTimeMargin}`);
+          ul.append('li').text(`Temp. deviation: ${plan.summary.payloadTemperatureDeviation}`);
 
 
+          elem.append('h5').text('Legs');
           const table = elem.append('table').attr('class', 'table table-dark table-striped');
           const wmap = new Map(world.nodes.map(n => [n.id, n]));
 
