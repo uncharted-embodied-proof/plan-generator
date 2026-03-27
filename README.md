@@ -15,8 +15,8 @@ GEMINI_API_KEY=<your_api_key>
 ```
 
 
-### States and Plans
-A state is defined as possible internal/external conditions at a given step. For example:
+### Leg and Plans
+A leg is defined as possible internal/external conditions at a given step. For example:
 
 ```
 {
@@ -34,105 +34,151 @@ A state is defined as possible internal/external conditions at a given step. For
 ```
 
 
-A plan is a listing of world-states to be executed by the operator in order. The summary section provide aggregated user-metrics calculate over each state in the listing. The stats section provides cumulative running totals as we traverse the plan from start to finish.
+A plan is a listing of leg configurations to be executed by the operator in order. The summary section provide aggregated user-metrics calculate over each state in the listing. The trip array contains leg-config and running totals.
 
 ```
 {
-  id: 222,
-  summary: {
-    time: 2211,
-    energy: 1001,
-    deliveryTime: 1133,
-    deliveryTimeMargin: -133,
-    payloadDeliveryTimeSafety: 0.6103290571626288,
-    bloodIntegrity: 0.8817887674451838,
-    droneSafety: 0.6123454547037126,
-    dronePowerSafety: 0.8350086092939993,
-    droneBatterySafety: 0.38968230011342575,
-    routeSafety: 0.9779632131559092,
-    temperatureSafety: 1.0581641215928466,
-    ascentSafety: 0.8997699516310177,
-    windSafety: 0.9762489845496409,
-    assetSafety: 0.7951543339298108,
-    patientSurvivial: 0.7460589123039063,
-    energyReserve: -0.28,
-    totalTurbo: 3,
-    totalAvoid: 3,
-    totalCond: 0,
-    totalComm: 1,
-    percentTurbo: 0.6,
-    percentAvoid: 0.6,
-    percentCond: 0,
-    percentComm: 0.2,
-    difficulty: 0.75
+  "id": 90112,
+  "summary": {
+    "time": 3167,
+    "energy": 1646,
+    "deliveryTime": 1700,
+    "deliveryTimeMargin": -700,
+    "payloadDeliveryTimeSafety": 0.5864494236949157,
+    "bloodIntegrity": 1,
+    "droneSafety": 0.651609837543091,
+    "dronePowerSafety": 0.8098968335781485,
+    "droneBatterySafety": 0.4933228415080335,
+    "routeSafety": 0.5747595880509104,
+    "temperatureSafety": 0,
+    "ascentSafety": 1,
+    "windSafety": 0.7244512092736588,
+    "assetSafety": 0.6131847127970007,
+    "patientSurvival": 0.7932247118474578,
+    "energyReserve": -0.06,
+    "payloadTemperatureDeviation": 0,
+    "totalTurbo": 3,
+    "totalAvoid": 3,
+    "totalCond": 4,
+    "totalComm": 4,
+    "percentTurbo": 0.75,
+    "percentAvoid": 0.75,
+    "percentCond": 1,
+    "percentComm": 1,
+    "difficulty": 0
   },
-  stats: [
+  "trip": [
     {
-      travelTime: 277.78,
-      payloadTemp: 4.12,
-      battery: 0.78,
-      payloadTemperatureLoad: 0.06,
-      droneBatteryLoad: 0.78,
-      dronePowerLoad: 0.33,
-      droneWindLoad: 0.04,
-      droneTemperatureLoad: 0.12,
-      difficulty: 0
+      "leg": {
+        "comm": 1,
+        "avoidance": 0,
+        "turbo": 0,
+        "cond": 1,
+        "leg": "XA",
+        "distance": 17000,
+        "weather": "good",
+        "difficulty": 29,
+        "temperature": 83,
+        "id": 6
+      },
+      "stats": {
+        "travelTime": 1700,
+        "payloadTemperature": 4,
+        "energyReserve": 0.38,
+        "payloadTemperatureLoad": 0,
+        "droneBatteryLoad": 0.38,
+        "dronePowerLoad": 0.31,
+        "droneWindLoad": 0.04,
+        "droneTemperatureLoad": 2.72,
+        "difficulty": 0
+      }
     },
     {
-      travelTime: 555.56,
-      payloadTemp: 4.37,
-      battery: 0.34,
-      payloadTemperatureLoad: 0.18,
-      droneBatteryLoad: 0.56,
-      dronePowerLoad: 0.34,
-      droneWindLoad: 0.04,
-      droneTemperatureLoad: 0.12,
-      difficulty: 0
+      "leg": {
+        "comm": 1,
+        "avoidance": 1,
+        "turbo": 1,
+        "cond": 1,
+        "leg": "AY",
+        "distance": 8400,
+        "weather": "good",
+        "difficulty": 1480,
+        "temperature": 18,
+        "id": 64
+      },
+      "stats": {
+        "travelTime": 466.67,
+        "payloadTemperature": null,
+        "energyReserve": 0.25,
+        "payloadTemperatureLoad": 0,
+        "droneBatteryLoad": 0.86,
+        "dronePowerLoad": 0.25,
+        "droneWindLoad": 0.04,
+        "droneTemperatureLoad": 0.12,
+        "difficulty": 0
+      }
     },
     {
-      travelTime: 300,
-      payloadTemp: 4.37,
-      battery: 0.12,
-      payloadTemperatureLoad: 0.19,
-      droneBatteryLoad: 0.78,
-      dronePowerLoad: 0.31,
-      droneWindLoad: 0.04,
-      droneTemperatureLoad: -0.4,
-      difficulty: 0
+      "leg": {
+        "comm": 1,
+        "avoidance": 1,
+        "turbo": 1,
+        "cond": 1,
+        "leg": "BY",
+        "distance": 8000,
+        "weather": "bad",
+        "difficulty": 1282,
+        "temperature": 50,
+        "id": 80
+      },
+      "stats": {
+        "travelTime": 444.44,
+        "payloadTemperature": null,
+        "energyReserve": 0.11,
+        "payloadTemperatureLoad": 0,
+        "droneBatteryLoad": 0.87,
+        "dronePowerLoad": 0.25,
+        "droneWindLoad": 0.88,
+        "droneTemperatureLoad": 1.4,
+        "difficulty": 0
+      }
     },
     {
-      travelTime: 800,
-      payloadTemp: null,
-      battery: -0.16,
-      payloadTemperatureLoad: 0.2,
-      droneBatteryLoad: 0.71,
-      dronePowerLoad: 0.15,
-      droneWindLoad: 0.04,
-      droneTemperatureLoad: -0.4,
-      difficulty: 0.2
-    },
-    {
-      travelTime: 277.78,
-      payloadTemp: null,
-      battery: -0.28,
-      payloadTemperatureLoad: 0.26,
-      droneBatteryLoad: 0.88,
-      dronePowerLoad: 0.18,
-      droneWindLoad: 0.04,
-      droneTemperatureLoad: 0.12,
-      difficulty: 0.55
+      "leg": {
+        "comm": 1,
+        "avoidance": 1,
+        "turbo": 1,
+        "cond": 1,
+        "leg": "XB",
+        "distance": 10000,
+        "weather": "bad",
+        "difficulty": 281,
+        "temperature": 30,
+        "id": 16
+      },
+      "stats": {
+        "travelTime": 555.56,
+        "payloadTemperature": null,
+        "energyReserve": -0.06,
+        "payloadTemperatureLoad": 0,
+        "droneBatteryLoad": 0.83,
+        "dronePowerLoad": 0.25,
+        "droneWindLoad": 0.88,
+        "droneTemperatureLoad": 0.6,
+        "difficulty": 0
+      }
     }
-  ],
-  plan: [ 10, 18, 92, 64, 14 ]
+  ]
 }
+
 ```
 
 
 ### Running
 This will generate three files
-- world.json: a graph of all world state as nodes and possible connecting edges between them
-- plans.json: a listing of viale plans 
-- locations.json: topologicial graph based on location
+- world.json: topologicial graph based on locations available
+- plans.jsonl: a listing of viale plans, one per line 
+- legs.json: all possible leg configurations
 
 An optional `size:xattr:zattr` parameter can be passed into the script to do grid-based sampling. 
 
