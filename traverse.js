@@ -43,7 +43,6 @@ const model = {
 
 
 const waypoints = ['X', 'A', 'B', 'C', 'D', 'Y'];
-// const waypoints = ['X', 'B', 'C', 'D', 'Y'];
 const legs = [
   // first half
   {
@@ -116,14 +115,6 @@ function getNextLocations(v) {
   if (v === 'C') return ['Y', 'X'];
   if (v === 'D') return ['Y', 'X'];
 }
-
-// function getNextLocations(v) {
-//   if (v === 'X') return ['B', 'C', 'D'];
-//   if (v === 'Y') return ['B', 'C', 'D'];
-//   if (v === 'B') return ['Y', 'X'];
-//   if (v === 'C') return ['Y', 'X'];
-//   if (v === 'D') return ['Y', 'X'];
-// }
 
 
 
@@ -281,54 +272,66 @@ const worldLegsMap = new Map(worldLegs.map(n => [n.id, n]));
 
 const findLoc = (id) => world.nodes.find(n => n.id === id).location;
 const expandedPlans = [];
+
+
+
 for (const plan of rawPlansThatReachedGoal) {
-  const key1 = `${findLoc(plan[0])}${findLoc(plan[1])}`;
-  const key2 = `${findLoc(plan[1])}${findLoc(plan[2])}`;
-  const key3 = `${findLoc(plan[2])}${findLoc(plan[3])}`;
-  const key4 = `${findLoc(plan[3])}${findLoc(plan[4])}`;
+  // Step 1: Generate all leg keys and reverse keys
+  const legGroups = [];
+  for (let i = 0; i < plan.length - 1; i++) {
+    const key = `${findLoc(plan[i])}${findLoc(plan[i + 1])}`;
+    const keyR = `${findLoc(plan[i + 1])}${findLoc(plan[i])}`;
+    // Step 2: Filter matching legs from worldLegs
+    const legs = worldLegs.filter(l => l.leg === key || l.leg === keyR);
+    legGroups.push(legs);
+  }
 
-  const key1r = `${findLoc(plan[1])}${findLoc(plan[0])}`;
-  const key2r = `${findLoc(plan[2])}${findLoc(plan[1])}`;
-  const key3r = `${findLoc(plan[3])}${findLoc(plan[2])}`;
-  const key4r = `${findLoc(plan[4])}${findLoc(plan[3])}`;
-
-  const legs1 = worldLegs.filter(l => l.leg === key1 || l.leg === key1r); 
-  const legs2 = worldLegs.filter(l => l.leg === key2 || l.leg === key2r); 
-  const legs3 = worldLegs.filter(l => l.leg === key3 || l.leg === key3r); 
-  const legs4 = worldLegs.filter(l => l.leg === key4 || l.leg === key4r); 
-
-
-  for (const a of legs1) {
-    for (const b of legs2) {
-      for (const c of legs3) {
-        for (const d of legs4) {
-          expandedPlans.push([a.id, b.id, c.id, d.id]);
-        }
-      }
+  // Step 3: Generate all combinations of legs
+  function cartesianProduct(arrays, prefix = []) {
+    if (!arrays.length) {
+      expandedPlans.push(prefix);
+      return;
+    }
+    const [first, ...rest] = arrays;
+    for (const item of first) {
+      cartesianProduct(rest, [...prefix, item.id]);
     }
   }
+  cartesianProduct(legGroups);
 }
+
+
+
+// for (const plan of rawPlansThatReachedGoal) {
+//   const key1 = `${findLoc(plan[0])}${findLoc(plan[1])}`;
+//   const key2 = `${findLoc(plan[1])}${findLoc(plan[2])}`;
+//   const key3 = `${findLoc(plan[2])}${findLoc(plan[3])}`;
+//   const key4 = `${findLoc(plan[3])}${findLoc(plan[4])}`;
+// 
+//   const key1r = `${findLoc(plan[1])}${findLoc(plan[0])}`;
+//   const key2r = `${findLoc(plan[2])}${findLoc(plan[1])}`;
+//   const key3r = `${findLoc(plan[3])}${findLoc(plan[2])}`;
+//   const key4r = `${findLoc(plan[4])}${findLoc(plan[3])}`;
+// 
+//   const legs1 = worldLegs.filter(l => l.leg === key1 || l.leg === key1r); 
+//   const legs2 = worldLegs.filter(l => l.leg === key2 || l.leg === key2r); 
+//   const legs3 = worldLegs.filter(l => l.leg === key3 || l.leg === key3r); 
+//   const legs4 = worldLegs.filter(l => l.leg === key4 || l.leg === key4r); 
+// 
+// 
+//   for (const a of legs1) {
+//     for (const b of legs2) {
+//       for (const c of legs3) {
+//         for (const d of legs4) {
+//           expandedPlans.push([a.id, b.id, c.id, d.id]);
+//         }
+//       }
+//     }
+//   }
+// }
 
 console.log(expandedPlans.length);
 console.log(expandedPlans[0]);
-
-
-/*
-rawPlansThatReachedGoal = rawPlansThatReachedGoal.filter(plan => {
-  const index = plan.indexOf(d => {
-    return goals.include(d);
-  });
-
-  for (let idx = (index+1); idx < plan.length; idx++) {
-    const ws = worldStateMap.get(plan[idx]);
-    if (ws && ws.cond === 1) {
-      return false;
-    }
-  }
-  return true;
-});
-console.log('# pruned plans (irrelevant payload condition)', rawPlansThatReachedGoal.length);
-*/
 
 
 /* Score the plans with user criteria */
@@ -656,36 +659,12 @@ async function writeArrayToJSONL(filePath, dataArray) {
   });
 }
 
-/*
-const stream = fs.createWriteStream("./plans.json");
-for (const chunk of stringifyArray(sampledPlans)) {
-  stream.write(chunk);
-}
-stream.end();
-stream.on("finish", () => {
-  const [minEnergy, maxEnergy] = findExtent(sampledPlans, 'energyReserve');
-  const [minTime, maxTime] = findExtent(sampledPlans, 'time');
-  const [minDifficulty, maxDifficulty] = findExtent(sampledPlans, 'difficulty');
-  const [minMargin, maxMargin] = findExtent(sampledPlans, 'deliveryTimeMargin');
-  const [minPatientSurvival, maxPatientSurvival] = findExtent(sampledPlans, 'patientSurvival');
-  const [minAssetSafety, maxAssetSafety] = findExtent(sampledPlans, 'assetSafety');
-
-  console.log('=== stats ===');
-  console.log(`Energy Used: [${minEnergy}, ${maxEnergy}]`);
-  console.log(`Difficulty:[${minDifficulty}, ${maxDifficulty}]`);
-  console.log(`Delivery Margin:[${minMargin}, ${maxMargin}]`);
-  console.log(`Time Used: [${minTime}, ${maxTime}]`);
-  console.log(`Patient Surivival: [${minPatientSurvival}, ${maxPatientSurvival}]`);
-  console.log(`Asset Safety:; [${minAssetSafety}, ${maxAssetSafety}]`);
-
-});
-*/
 
 fs.writeFileSync('./legs.json', JSON.stringify(worldLegs),  'utf8');
 fs.writeFileSync('./world.json', JSON.stringify(world),  'utf8');
 
 await writeArrayToJSONL('plans.jsonl', sampledPlans); 
-console.log('all done');
+console.log('All done');
 
 const [minEnergy, maxEnergy] = findExtent(sampledPlans, 'energyReserve');
 const [minTime, maxTime] = findExtent(sampledPlans, 'time');
