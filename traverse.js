@@ -336,10 +336,10 @@ console.log(expandedPlans[0]);
 
 /* Score the plans with user criteria */
 const P_base = 1000;
-const P_boost = 200;
-const P_payload = 1000;
-const P_comms = 8;
-const P_avoid = 20;
+const P_boost = 500;
+const P_payload = 500;
+const P_comms = 108;
+const P_avoid = 120;
 const P_weather = 237;
 const P_max = 6635;
 
@@ -353,7 +353,7 @@ const v_boost = 24.0; // originally 18.0
 const v_ascent_max = 5.0;
 const v_wind_max = 8.0;
 
-const E_full = 780;
+const E_full = 880;
 const E_empty = 0;
 
 const p_preserve = 10;
@@ -438,6 +438,8 @@ const plans = expandedPlans.map((p, i) => {
 
     const droneWindLoad = v_wind_zone / v_wind_max;
 
+    const commLoad = f_comms;
+
     const v_ascent = Math.abs(ws.difficulty - prevWs.difficulty) / travelTime;
     const difficulty = (v_ascent / v_ascent_max) * (1 - f_avoid);
 
@@ -471,6 +473,7 @@ const plans = expandedPlans.map((p, i) => {
         dronePowerLoad: +dronePowerLoad.toFixed(2),
         droneWindLoad: +droneWindLoad.toFixed(2),
         droneTemperatureLoad: +droneTemperatureLoad.toFixed(2),
+        commLoad: commLoad,
         difficulty: +difficulty.toFixed(2),
       }
     });
@@ -494,12 +497,22 @@ const plans = expandedPlans.map((p, i) => {
   const dronePowerSafety = SAFETYFUNC(trip.map(d => d.stats.dronePowerLoad), zoneTimes, totalTime);
   const droneSafety = 0.5 * (droneBatterySafety + dronePowerSafety);
 
+  const commSafety = SAFETYFUNC(trip.map(d => d.stats.commLoad), zoneTimes, totalTime);
+
   const temperatureSafety = SAFETYFUNC(trip.map(d => d.stats.droneTemperatureLoad), zoneTimes, totalTime); 
   const ascentSafety = SAFETYFUNC(trip.map(d => d.stats.difficulty), zoneTimes, totalTime);
   const windSafety = SAFETYFUNC(trip.map(d => d.stats.droneWindLoad), zoneTimes, totalTime); 
   const routeSafety = 0.3333 * (temperatureSafety + windSafety + ascentSafety);
 
-  const assetSafety = 0.5 * (droneSafety + routeSafety);
+  const assetSafety = (1/6) * (
+    droneBatterySafety + 
+    dronePowerSafety + 
+    temperatureSafety + 
+    windSafety + 
+    ascentSafety + 
+    commSafety
+  );
+
   const patientSafety = 0.5 * (payloadSafety + payloadDeliveryTimeSafety);
 
 
@@ -543,7 +556,7 @@ const plans = expandedPlans.map((p, i) => {
       windSafety,
       assetSafety,
       patientSurvival: patientSafety,
-      energyReserve: +((E_full - totalEnergy) / E_full).toFixed(2),
+      energyReserve: +((E_full - totalEnergy) / E_full).toFixed(3),
       payloadTemperatureDeviation: tempDeviation,
 
       totalTurbo,
@@ -682,7 +695,7 @@ const fields = [
   'deliveryTimeMargin',
   'energyReserve',
   'difficulty',
-  'patientSafety',
+  'patientSurvival',
   'assetSafety'
 ];
 
