@@ -3,6 +3,8 @@ This repo provides two things:
 - A script that generates possible world-graph, along with listing viable plans (a listing of traversed states and summarized stats).
 - A simple UI-interface to chat and reaqson about the generated files
 
+The script will generate all combination of plans that have reached the target and navigated back to the starting point. However not all plans are physically viable (eg: some plans will have negative battery usage). The notion of validity is up to the users of the dataset to define, and to break, if deemed necessary. 
+
 
 ### Setup
 - Run `npm install`
@@ -201,7 +203,8 @@ node ./traverse.js 10:energy:time
 
 
 ### Running with chat agent
-Once the above files have been generated, you can chat with an agent to reason over them.
+Once the above files have been generated, you can chat with an LLM agent to reason over the generated data. 
+
 
 ```
 node ./server.js
