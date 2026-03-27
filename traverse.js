@@ -525,10 +525,6 @@ const plans = expandedPlans.map((p, i) => {
   // invert so high nubmer means "good"
   tempDeviation *= -1;
 
-  // console.log(minTemp, maxTemp, tempDeviation);
-  // const payloadTemperatureDeviation
-
-  // FIXME: Need to finalize the metrics and thresholds/constraints
   return { 
     id: i, 
     summary: {
@@ -609,6 +605,9 @@ console.log('# of total sampled plans', sampledPlans.length);
 
 
 
+/**
+ * Find min/max for very very large arrays
+**/
 function findExtent(arr, str) {
   let min = Infinity;
   let max = -Infinity;
@@ -627,19 +626,19 @@ function findExtent(arr, str) {
 }
 
 
+// function* stringifyArray(arr) {
+//   yield "[";
+//   for (let i = 0; i < arr.length; i++) {
+//     if (i) yield ",";
+//     yield JSON.stringify(arr[i]);
+//   }
+//   yield "]";
+// }
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // Write output
 ////////////////////////////////////////////////////////////////////////////////
-function* stringifyArray(arr) {
-  yield "[";
-  for (let i = 0; i < arr.length; i++) {
-    if (i) yield ",";
-    yield JSON.stringify(arr[i]);
-  }
-  yield "]";
-}
-
 async function writeArrayToJSONL(filePath, dataArray) {
   const stream = fs.createWriteStream(filePath, { encoding: 'utf8' });
 
@@ -666,17 +665,31 @@ fs.writeFileSync('./world.json', JSON.stringify(world),  'utf8');
 await writeArrayToJSONL('plans.jsonl', sampledPlans); 
 console.log('All done');
 
-const [minEnergy, maxEnergy] = findExtent(sampledPlans, 'energyReserve');
-const [minTime, maxTime] = findExtent(sampledPlans, 'time');
-const [minDifficulty, maxDifficulty] = findExtent(sampledPlans, 'difficulty');
-const [minMargin, maxMargin] = findExtent(sampledPlans, 'deliveryTimeMargin');
-const [minPatientSurvival, maxPatientSurvival] = findExtent(sampledPlans, 'patientSurvival');
-const [minAssetSafety, maxAssetSafety] = findExtent(sampledPlans, 'assetSafety');
+
+// Print out statistics
+function rightPad(value, length) {
+  value = String(value);
+  if (value.length >= length) {
+      return value;
+  }
+  const padLength = length - value.length;
+  return value + ' '.repeat(padLength);
+}
+const fields = [
+  'time',
+  'deliveryTime',
+  'energy',
+  'deliveryTimeMargin',
+  'energyReserve',
+  'difficulty',
+  'patientSafety',
+  'assetSafety'
+];
+
 
 console.log('=== stats ===');
-console.log(`Energy Used: [${minEnergy}, ${maxEnergy}]`);
-console.log(`Difficulty:[${minDifficulty}, ${maxDifficulty}]`);
-console.log(`Delivery Margin:[${minMargin}, ${maxMargin}]`);
-console.log(`Time Used: [${minTime}, ${maxTime}]`);
-console.log(`Patient Surivival: [${minPatientSurvival}, ${maxPatientSurvival}]`);
-console.log(`Asset Safety:; [${minAssetSafety}, ${maxAssetSafety}]`);
+for (const field of fields) {
+  const [min, max] = findExtent(sampledPlans, field);
+  console.log(`${rightPad(field, 25)} [${min}, ${max}]`);
+}
+
