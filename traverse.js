@@ -142,21 +142,21 @@ const crazyScenario = {
     // first half
     {
       leg: 'XB', 
-      distance: 2000,
+      distance: 1500,
       weather: 'bad',
       difficulty: 32000,
       temperature: 20
     },
     {
       leg: 'XC',
-      distance: 10000,
+      distance: 7500,
       weather: 'good',
-      difficulty: 700,
+      difficulty: 20,
       temperature: 5.0 
     },
     {
       leg: 'XD', 
-      distance: 3000,
+      distance: 2000,
       weather: 'good',
       difficulty: 10,
       temperature: 250.0
@@ -172,9 +172,9 @@ const crazyScenario = {
     },
     {
       leg: 'CY',
-      distance: 11000,
+      distance: 7000,
       weather: 'good',
-      difficulty: 500,
+      difficulty: 10,
       temperature: 5.0
     },
     {
@@ -382,7 +382,7 @@ console.log(expandedPlans[0]);
 
 /* Score the plans with user criteria */
 const P_base = 1000;
-const P_boost = 500;
+const P_boost = 1100;
 const P_payload = 500;
 const P_comms = 108;
 const P_avoid = 120;
@@ -395,11 +395,11 @@ const c_cond = 0.2;
 const c_payload = 4200;
 const v_base = 10.0;
 
-const v_boost = 24.0; // originally 18.0
+const v_boost = 18.0;
 const v_ascent_max = 5.0;
 const v_wind_max = 8.0;
 
-const E_full = 880;
+const E_full = 1200;
 const E_empty = 0;
 
 const p_preserve = 10;
@@ -485,7 +485,7 @@ const plans = expandedPlans.map((p, i) => {
 
     const droneWindLoad = v_wind_zone / v_wind_max;
 
-    const commLoad = f_comms;
+    const commLoad = (1 - f_comms);
 
     const v_ascent = Math.abs(ws.difficulty - prevWs.difficulty) / travelTime;
     const difficulty = (v_ascent / v_ascent_max) * (1 - f_avoid);
