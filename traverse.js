@@ -42,68 +42,142 @@ const model = {
 };
 
 
-const waypoints = ['X', 'A', 'B', 'C', 'D', 'Y'];
-const legs = [
-  // first half
-  {
-    leg: 'XA', 
-    distance: 17000,
-    weather: 'good',
-    difficulty: 29,
-    temperature: 83
-  },
-  {
-    leg: 'XB', 
-    distance: 10000,
-    weather: 'bad',
-    difficulty: 281,
-    temperature: 30
-  },
-  {
-    leg: 'XC',
-    distance: 10000,
-    weather: 'good',
-    difficulty: 763,
-    temperature: 5.0 
-  },
-  {
-    leg: 'XD', 
-    distance: 12000,
-    weather: 'good',
-    difficulty: 1302,
-    temperature: 8.0
-  },
+/**
+ * A scenario that is somewaht routed in physical reality
+**/
+const normalScenario = {
+  name: 'normal scenario',
+  waypoints:['X', 'A', 'B', 'C', 'D', 'Y'],
+  legs: [
+    // first half
+    {
+      leg: 'XA', 
+      distance: 17000,
+      weather: 'good',
+      difficulty: 29,
+      temperature: 83
+    },
+    {
+      leg: 'XB', 
+      distance: 10000,
+      weather: 'bad',
+      difficulty: 281,
+      temperature: 30
+    },
+    {
+      leg: 'XC',
+      distance: 10000,
+      weather: 'good',
+      difficulty: 763,
+      temperature: 5.0 
+    },
+    {
+      leg: 'XD', 
+      distance: 12000,
+      weather: 'good',
+      difficulty: 1302,
+      temperature: 8.0
+    },
 
-  // second half
-  {
-    leg: 'AY',
-    distance: 8400,
-    weather: 'good',
-    difficulty: 1480,
-    temperature: 18 
-  },
-  {
-    leg: 'BY',
-    distance: 8000,
-    weather: 'bad',
-    difficulty: 1282,
-    temperature: 50
-  },
-  {
-    leg: 'CY',
-    distance: 11000,
-    weather: 'good',
-    difficulty: 800,
-    temperature: 5.0
-  },
-  {
-    leg: 'DY',
-    distance: 7000,
-    weather: 'good',
-    difficulty: 261,
-    temperature: 8
-  }
-];
+    // second half
+    {
+      leg: 'AY',
+      distance: 8400,
+      weather: 'good',
+      difficulty: 1480,
+      temperature: 18 
+    },
+    {
+      leg: 'BY',
+      distance: 8000,
+      weather: 'bad',
+      difficulty: 1282,
+      temperature: 50
+    },
+    {
+      leg: 'CY',
+      distance: 11000,
+      weather: 'good',
+      difficulty: 800,
+      temperature: 5.0
+    },
+    {
+      leg: 'DY',
+      distance: 7000,
+      weather: 'good',
+      difficulty: 261,
+      temperature: 8
+    }
+  ]
+};
+
+
+/**
+ * An exaggerated, totally unrealistic scenario to accentuate 
+ * decision tradeoffs
+ *
+ * B - short route highly dangerous for drone
+ * C - long route turbo required
+ * D - medium route dangerous for payload
+**/
+const crazyScenario = {
+  name: 'crazy scenario',
+  waypoints:['X', 'B', 'C', 'D', 'Y'],
+  legs: [
+    // first half
+    {
+      leg: 'XB', 
+      distance: 2000,
+      weather: 'bad',
+      difficulty: 32000,
+      temperature: 20
+    },
+    {
+      leg: 'XC',
+      distance: 10000,
+      weather: 'good',
+      difficulty: 700,
+      temperature: 5.0 
+    },
+    {
+      leg: 'XD', 
+      distance: 3000,
+      weather: 'good',
+      difficulty: 10,
+      temperature: 250.0
+    },
+
+    // second half
+    {
+      leg: 'BY',
+      distance: 1500,
+      weather: 'bad',
+      difficulty: 80000,
+      temperature: 10 
+    },
+    {
+      leg: 'CY',
+      distance: 11000,
+      weather: 'good',
+      difficulty: 500,
+      temperature: 5.0
+    },
+    {
+      leg: 'DY',
+      distance: 1500,
+      weather: 'good',
+      difficulty: 0,
+      temperature: 200.0 
+    }
+  ]
+};
+
+
+
+
+const SCENARIO = crazyScenario;
+
+
 
 // Give some constraints so the world so it isn't a K-graph
 // and a combinatorial explosion
@@ -129,7 +203,7 @@ let worldStates = [];
 let worldEdges = [];
 let cnt = 0;
 
-waypoints.forEach(w => {
+SCENARIO.waypoints.forEach(w => {
   worldStates.push({
     location: w,
     id: ++cnt
@@ -254,7 +328,7 @@ console.log('# pruned plans (reach goal and home)', rawPlansThatReachedGoal);
 
 const worldLegs = [];
 let legcnt = 0;
-for (const leg of legs) {
+for (const leg of SCENARIO.legs) {
   const permutations = cartesianObject(model);
   for (const p of permutations) {
     worldLegs.push({
@@ -490,6 +564,7 @@ const plans = expandedPlans.map((p, i) => {
   const payloadSafety = SAFETYFUNC(trip.map(d => d.stats.payloadTemperatureLoad), zoneTimes, totalTime);
 
 
+
   let payloadDeliveryTimeSafety = (Math.exp(deliveryTime / totalTime)  - 1) / (Math.exp(1) - 1)
   payloadDeliveryTimeSafety = Math.max(0, 1 - payloadDeliveryTimeSafety);
 
@@ -537,6 +612,11 @@ const plans = expandedPlans.map((p, i) => {
 
   // invert so high nubmer means "good"
   tempDeviation *= -1;
+
+
+  // if (payloadSafety < 1.0) {
+  //   console.log('!!', payloadSafety);
+  // }
 
   return { 
     id: i, 
@@ -696,11 +776,14 @@ const fields = [
   'energyReserve',
   'difficulty',
   'patientSurvival',
-  'assetSafety'
+  'assetSafety',
+  'temperatureSafety',
+  'payloadTemperatureDeviation',
+  'bloodIntegrity',
 ];
 
 
-console.log('=== stats ===');
+console.log(`=== stats: ${SCENARIO.name} ===`);
 for (const field of fields) {
   const [min, max] = findExtent(sampledPlans, field);
   console.log(`${rightPad(field, 25)} [${min}, ${max}]`);
