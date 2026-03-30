@@ -43,11 +43,19 @@ const model = {
 
 
 /**
- * A scenario that is somewaht routed in physical reality
+ * A scenario that is somewaht rooted in physical reality
 **/
 const normalScenario = {
   name: 'normal scenario',
   waypoints:['X', 'A', 'B', 'C', 'D', 'Y'],
+  getNextLocations: function (v) {
+    if (v === 'X') return ['A', 'B', 'C', 'D'];
+    if (v === 'Y') return ['A', 'B', 'C', 'D'];
+    if (v === 'A') return ['Y', 'X'];
+    if (v === 'B') return ['Y', 'X'];
+    if (v === 'C') return ['Y', 'X'];
+    if (v === 'D') return ['Y', 'X'];
+  },
   legs: [
     // first half
     {
@@ -123,6 +131,13 @@ const normalScenario = {
 const crazyScenario = {
   name: 'crazy scenario',
   waypoints:['X', 'B', 'C', 'D', 'Y'],
+  getNextLocations: function (v) {
+    if (v === 'X') return ['B', 'C', 'D'];
+    if (v === 'Y') return ['B', 'C', 'D'];
+    if (v === 'B') return ['Y', 'X'];
+    if (v === 'C') return ['Y', 'X'];
+    if (v === 'D') return ['Y', 'X'];
+  },
   legs: [
     // first half
     {
@@ -179,21 +194,9 @@ const SCENARIO = crazyScenario;
 
 
 
-// Give some constraints so the world so it isn't a K-graph
-// and a combinatorial explosion
-function getNextLocations(v) {
-  if (v === 'X') return ['A', 'B', 'C', 'D'];
-  if (v === 'Y') return ['A', 'B', 'C', 'D'];
-  if (v === 'A') return ['Y', 'X'];
-  if (v === 'B') return ['Y', 'X'];
-  if (v === 'C') return ['Y', 'X'];
-  if (v === 'D') return ['Y', 'X'];
-}
-
-
 
 function neighbourNodes(locationId, worldStates) {
-  const nextLocations = getNextLocations(locationId);
+  const nextLocations = SCENARIO.getNextLocations(locationId);
 
   return worldStates.filter(s => nextLocations.includes(s.location));
 }
@@ -373,37 +376,6 @@ for (const plan of rawPlansThatReachedGoal) {
   }
   cartesianProduct(legGroups);
 }
-
-
-
-// for (const plan of rawPlansThatReachedGoal) {
-//   const key1 = `${findLoc(plan[0])}${findLoc(plan[1])}`;
-//   const key2 = `${findLoc(plan[1])}${findLoc(plan[2])}`;
-//   const key3 = `${findLoc(plan[2])}${findLoc(plan[3])}`;
-//   const key4 = `${findLoc(plan[3])}${findLoc(plan[4])}`;
-// 
-//   const key1r = `${findLoc(plan[1])}${findLoc(plan[0])}`;
-//   const key2r = `${findLoc(plan[2])}${findLoc(plan[1])}`;
-//   const key3r = `${findLoc(plan[3])}${findLoc(plan[2])}`;
-//   const key4r = `${findLoc(plan[4])}${findLoc(plan[3])}`;
-// 
-//   const legs1 = worldLegs.filter(l => l.leg === key1 || l.leg === key1r); 
-//   const legs2 = worldLegs.filter(l => l.leg === key2 || l.leg === key2r); 
-//   const legs3 = worldLegs.filter(l => l.leg === key3 || l.leg === key3r); 
-//   const legs4 = worldLegs.filter(l => l.leg === key4 || l.leg === key4r); 
-// 
-// 
-//   for (const a of legs1) {
-//     for (const b of legs2) {
-//       for (const c of legs3) {
-//         for (const d of legs4) {
-//           expandedPlans.push([a.id, b.id, c.id, d.id]);
-//         }
-//       }
-//     }
-//   }
-// }
-
 console.log(expandedPlans.length);
 console.log(expandedPlans[0]);
 
@@ -438,6 +410,7 @@ const T_payload_max = 6.0;
 const T_payload_min = 2.0;
 
 
+// Time
 const t_payload_max = 14 * 60;
 
 
@@ -530,10 +503,6 @@ const plans = expandedPlans.map((p, i) => {
     totalEnergy += energyConsumption;
     totalDifficulty += difficulty;
 
-    /**
-     * b - battery remaining
-     * t - payload temperature
-    */
     trip.push({
       leg: ws,
 
@@ -613,11 +582,6 @@ const plans = expandedPlans.map((p, i) => {
   // invert so high nubmer means "good"
   tempDeviation *= -1;
 
-
-  // if (payloadSafety < 1.0) {
-  //   console.log('!!', payloadSafety);
-  // }
-
   return { 
     id: i, 
     summary: {
@@ -651,7 +615,6 @@ const plans = expandedPlans.map((p, i) => {
       difficulty: +(totalDifficulty.toFixed(2))
     },
     trip: trip
-    // plan: p 
   }
 });
 console.log('# of total plans', plans.length);
@@ -693,7 +656,6 @@ if (process.argv.length === 3) {
   });
   console.log('# pruned plans (after grid-based sampling)', sampledPlans.length);
 } 
-
 console.log('# of total sampled plans', sampledPlans.length);
 
 
@@ -788,4 +750,3 @@ for (const field of fields) {
   const [min, max] = findExtent(sampledPlans, field);
   console.log(`${rightPad(field, 25)} [${min}, ${max}]`);
 }
-

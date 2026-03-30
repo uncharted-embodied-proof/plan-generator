@@ -375,18 +375,23 @@ app.post('/chat', async (req, res) => {
   let iteration = 0;
   let responseText = '';
 
+  const d = new Date();
+  const pad = n => String(n).padStart(2, '0');
+  const formatted = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} `
+    + `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+
   console.log('');
-  console.group(`>> [${new Date()}] processing chat`);
-  console.log(`query: ${message}`);
+  console.group(`>>> [${formatted}]`);
+  console.log(`Query: ${message}`);
 
   const contents = [...history, { role: "user", parts: [{ text: message }] }];
 
   while (true) {
     iteration ++;
     const toolChoice = contents.some(c => c.role === 'tool') ? 'none' : 'auto';
-    console.log(`iteration: ${iteration}`);
-    console.log(`model: ${MODEL}`);
-    console.log(`tool choice: ${toolChoice}`);
+    console.log(`Iteration: ${iteration}`);
+    console.log(`Model: ${MODEL}`);
+    console.log(`Tool choice: ${toolChoice}`);
 
     try {
       const response = await ai.models.generateContent({
