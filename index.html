@@ -40,23 +40,33 @@
     <div class="container-fluid flex-grow-1 d-flex flex-column py-3">
         <div class="row flex-grow-1">
             <!-- Left Column: Summary and Metadata -->
-            <div class="col-md-2 d-flex flex-column">
-                <div class="p-2 mb-3 bg-dark-subtle text-emphasis-dark rounded">
-                    Starting at X, deliver the supply to Y and come back to X.
+            <div class="col-md-3 d-flex flex-column">
+                <!--
+                <div class="p-2 mb-1 bg-dark-subtle text-emphasis-dark rounded" style="font-size: 90%">
                 </div>
-                <div id="map" class="flex-grow-1 mb-3"></div>
+                -->
+                <!--
+                <div id="map" class="flex-grow-1 mb-1">
+                -->
+                <div id="map" class="flex-grow-0 mb-1">
+                  <p style="position: absolute; top: 20; z-index: 1; max-width: 17rem; font-size: 90%"> 
+                    Starting at X, deliver to Y and come back to X.
+                  </p>
+                </div>
+                <div id="legs">
+                </div>
                 <div id="counter" class="p-2 bg-dark-subtle text-emphasis-dark rounded"></div>
             </div>
 
             <!-- Center Column: Chat Interface -->
-            <div class="col-md-7 d-flex flex-column">
+            <div class="col-md-6 d-flex flex-column">
                 <div id="chat-container" class="flex-grow-1 d-flex flex-column border rounded p-2 mb-3" style="heigh: 500px">
                     <div id="chat-history" class="flex-grow-1 overflow-auto border-bottom pb-2 mb-2"></div>
                     <div id="input-area" class="d-flex">
                         <input type="text" id="message-input" class="form-control me-2" placeholder="Type your message...">
                         <button id="send-button" class="btn btn-primary">Send</button>
                     </div>
-                    <p id="intro" class="text-muted mt-2">Start the conversation by asking the AI if there are valid COAs. You can query AI about constraints and query COAs</p>
+                    <p id="intro" class="text-muted mt-2" style="font-size: 90%">Start the conversation by asking the AI if there are valid COAs. You can query AI about constraints and query COAs. You can also ask the AI to describe/explain the governing model.</p>
                 </div>
             </div>
 
@@ -128,16 +138,13 @@
          * D3 Gen force-directed graph
         **/
         function generateGraph(world, topIds = [], bottomIds = []) {
-          const width = 180;
+          const width = 200;
           const height = 350;
 
 
           const nodes = world.nodes.map(d => ({ ...d }));
           const links = world.edges.map(d => ({ ...d }));
 
-
-          console.log('!!', nodes);
-          console.log('!!', links);
 
           const svg = d3.select("#map")
             .append("svg")
@@ -251,6 +258,7 @@
         }
 
 
+        // Plan/config view
         function viewPlan(plan) {
           if (!plan) return;
 
@@ -299,6 +307,31 @@
           }
         }
 
+        // Leg attribute table
+        function makeLegsTable(legs) {
+          const elem = d3.select('#legs');
+          elem.selectAll('*').remove();
+
+          const table = elem.append('table').attr('class', 'table table-dark table-striped');
+          const thead = table.append('thead');
+          thead.append('th').text('Leg');
+          thead.append('th').text('Dist');
+          thead.append('th').text('Weat.');
+          thead.append('th').text('Temp.');
+          thead.append('th').text('Diff.');
+
+          const tbody = table.append('tbody');
+          for (const leg of legs) {
+            const tr = tbody.append('tr');
+            tr.append('td').text(leg.leg);
+            tr.append('td').text(leg.distance);
+            tr.append('td').text(leg.weather);
+            tr.append('td').text(leg.temperature);
+            tr.append('td').text(leg.difficulty);
+          }
+
+        }
+
         fetch('./world.json', {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' }
@@ -306,13 +339,26 @@
           return d.json()
         }).then(d => {
           generateGraph(d, ['X'], ['Y']);
+          world = d;
         });;
 
-        fetch('./world.json', {
+        fetch('./legs.json', {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' }
-        }).then(d => { return d.json()
-        }).then(d => { world = d; });
+        }).then(d => {
+          return d.json();
+        }).then(d => {
+          // lazy dedupe
+          const legs = [];
+          for (const l of d) {
+            if (legs.find(d => d.leg === l.leg)) {
+              continue;
+            }
+            legs.push(l);
+          }
+
+          makeLegsTable(legs);
+        });
 
 
         async function streamJSONL(url) {
@@ -439,6 +485,7 @@
 
 
         // Stopwatch
+        /*
         let c = 0;
         function formatTime(seconds) {
           const mins = Math.floor(seconds / 60);
@@ -450,6 +497,7 @@
           c++;
           document.getElementById('counter').innerHTML = formatTime(c);
         }, 1000);
+        */
 
     </script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>

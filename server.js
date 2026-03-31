@@ -549,7 +549,7 @@ app.post('/chat', async (req, res) => {
         if (status == 429 || status >= 500) {
           responseText = 'Something bad happened...we probably hit a service-level rate limit';
         } else {
-          responseText = `Something bad happened, status code =${status} `;
+          responseText = `Something bad happened, status code = ${status} `;
         }
       } else {
         responseText = 'Error in analytic execution, try rephraasing your query to be more exact';
