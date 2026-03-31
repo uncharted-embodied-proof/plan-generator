@@ -131,8 +131,13 @@
           const width = 180;
           const height = 350;
 
+
           const nodes = world.nodes.map(d => ({ ...d }));
           const links = world.edges.map(d => ({ ...d }));
+
+
+          console.log('!!', nodes);
+          console.log('!!', links);
 
           const svg = d3.select("#map")
             .append("svg")
@@ -163,7 +168,7 @@
             .attr("stroke-width", 3);
 
           nodeGroup.append("text")
-            .text(d => d.id)
+            .text(d => d.location)
             .attr("x", -5)
             .attr("y", 4)
             .style("font-size", "14px")
@@ -180,7 +185,7 @@
             .on("tick", ticked);
 
           nodes.forEach(n => {
-            if (topIds.includes(n.id)) {
+            if (topIds.includes(n.location)) {
               n.fx = width / 2;
               n.fy = 50;
             }
@@ -294,7 +299,7 @@
           }
         }
 
-        fetch('./locations.json', {
+        fetch('./world.json', {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' }
         }).then(d => {

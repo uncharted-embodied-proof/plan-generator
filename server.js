@@ -246,11 +246,20 @@ async function generateSearchCode(query) {
             }
           }
           cnt;
-          
+
+        example query:
+          Are there any COAs with patient safety > 0.5 and asset safety > 0.8
+
+        example code:
+          let matchingPlans = plans.filter(p => {
+            return p.summary.patientSafety > 0.5 && p.summary.assetSafety >= 0.8;
+          });
+          let numMatchingPlans = matchingPlans.length;
+          numMatchingPlans;
         
         General hints:
-        - When the query asks for a number, eg: "how many ...", "number of ...". Return a short text summary.
-        - When the query ask for details or configurations, return the full plan objects, the "plan" array should be converted to the world nodes that the element ids reference.
+        - When the query asks for a quantitative or existential question, eg: "are there ...", "how many ...", "number of ...". Return the number of matches along with a short text summary.
+        - When the query asks for details or configurations, return the full plan objects, the "plan" array should be converted to the world nodes that the element ids reference.
         - Do not return a list of objects unless explictedly asked to do so.
 
         Important:
@@ -491,6 +500,9 @@ app.post('/chat', async (req, res) => {
 
             - When a tool returns a response, interpret the result and provide the final answer to the user. Do not call another tool unless absolutely necessary.
 
+            - For quantitative or existential queries, eg: "are there ...", "what is the number of ...", you should return the NUMBER of matching plans and not the plan objects
+
+
             Important 
             - For queries unrelated to plans, graphs, navigation, do not use any tools, just reply that the question is outside of your operating parameters.
             - Be concise in your answers unless otherwise noted.
@@ -535,9 +547,9 @@ app.post('/chat', async (req, res) => {
       const status = err?.status || err?.response?.status || error?.error?.code;
       if (status) {
         if (status == 429 || status >= 500) {
-          responseText = 'Soemthing bad happened...we probably hit a service-level rate limit';
+          responseText = 'Something bad happened...we probably hit a service-level rate limit';
         } else {
-          responseText = `Soemthing bad happened, status code =${status} `;
+          responseText = `Something bad happened, status code =${status} `;
         }
       } else {
         responseText = 'Error in analytic execution, try rephraasing your query to be more exact';
