@@ -38,7 +38,7 @@ const model = {
   comm: [1, 0],
   avoidance: [1, 0],
   turbo: [1, 0],
-  cond: [1, 0],
+  cond: [0],
 };
 
 
@@ -142,7 +142,7 @@ const crazyScenario = {
     // first half
     {
       leg: 'XB', 
-      distance: 1500,
+      distance: 2800,
       weather: 'bad',
       difficulty: 32000,
       temperature: 20
@@ -159,13 +159,13 @@ const crazyScenario = {
       distance: 2000,
       weather: 'good',
       difficulty: 10,
-      temperature: 250.0
+      temperature: 550.0
     },
 
     // second half
     {
       leg: 'BY',
-      distance: 1500,
+      distance: 2800,
       weather: 'bad',
       difficulty: 80000,
       temperature: 10 
@@ -182,7 +182,7 @@ const crazyScenario = {
       distance: 1500,
       weather: 'good',
       difficulty: 0,
-      temperature: 200.0 
+      temperature: 500.0 
     }
   ]
 };
@@ -384,10 +384,11 @@ console.log(expandedPlans[0]);
 const P_base = 1000;
 const P_boost = 1100;
 const P_payload = 500;
-const P_comms = 108;
-const P_avoid = 120;
+const P_comms = 108 * 2;
+const P_avoid = 1500;
 const P_weather = 237;
-const P_max = 6635;
+// const P_max = 6635;
+const P_max = 4500;
 
 const T_max = 40;
 const T_min = -10;
@@ -399,7 +400,7 @@ const v_boost = 18.0;
 const v_ascent_max = 5.0;
 const v_wind_max = 8.0;
 
-const E_full = 1200;
+const E_full = 1100;
 const E_empty = 0;
 
 const p_preserve = 10;
@@ -447,7 +448,7 @@ const plans = expandedPlans.map((p, i) => {
     const ws = worldLegsMap.get(pid);
     const prevWs = i === 0 ? ws : worldLegsMap.get(p[i-1]);
 
-    const v_wind_zone = (ws.weather === 'good' ? 0.3 : 7.0);
+    const v_wind_zone = (ws.weather === 'good' ? 0.3 : 8.0);
     const f_turbo = ws.turbo;
     const f_comms = ws.comm;
     const f_avoid = ws.avoidance;
@@ -475,20 +476,21 @@ const plans = expandedPlans.map((p, i) => {
 
     const energyConsumption = powerConsumption * travelTime / 3600;
 
-    const batteryLevel = (E_full - energyConsumption); 
+    const batteryLevel = (E_full - energyConsumption - totalEnergy); 
 
     const droneTemperatureLoad = (T_zone - 0.5 * (T_max + T_min)) / (0.5 * (T_max - T_min));
 
-    const dronePowerLoad = powerConsumption / P_max;
+    const dronePowerLoad = Math.min(1.0, powerConsumption / P_max);
 
-    const droneBatteryLoad = batteryLevel / E_full;
+    const droneBatteryLoad = batteryLevel < 0 ? 1 : (1 - batteryLevel / E_full);
+
 
     const droneWindLoad = v_wind_zone / v_wind_max;
 
     const commLoad = (1 - f_comms);
 
     const v_ascent = Math.abs(ws.difficulty - prevWs.difficulty) / travelTime;
-    const difficulty = (v_ascent / v_ascent_max) * (1 - f_avoid);
+    const difficulty = (v_ascent / v_ascent_max) * (1.25 - f_avoid);
 
 
     const deltaPayloadTemp = (ws.temperature - currentTemperature) * c_cond * travelTime / (c_payload * m_payload)
@@ -533,9 +535,18 @@ const plans = expandedPlans.map((p, i) => {
   const payloadSafety = SAFETYFUNC(trip.map(d => d.stats.payloadTemperatureLoad), zoneTimes, totalTime);
 
 
+  let timeStress =  deliveryTime / t_payload_max;
+  let timeSafety = 0;
+  if (timeStress <= 1) {
+    timeSafety = 0.5 + 0.5 * (t_payload_max - deliveryTime) / t_payload_max;
+  } else {
+    timeSafety = 0.5 - 0.5 * (deliveryTime - t_payload_max) / deliveryTime;
+  }
 
-  let payloadDeliveryTimeSafety = (Math.exp(deliveryTime / totalTime)  - 1) / (Math.exp(1) - 1)
-  payloadDeliveryTimeSafety = Math.max(0, 1 - payloadDeliveryTimeSafety);
+  let payloadDeliveryTimeSafety = timeSafety;
+
+  // let payloadDeliveryTimeSafety = (Math.exp(ratio)  - 1) / (Math.exp(1) - 1)
+  // payloadDeliveryTimeSafety = Math.max(0, 1 - payloadDeliveryTimeSafety);
 
   const droneBatterySafety = SAFETYFUNC(trip.map(d => d.stats.droneBatteryLoad), zoneTimes, totalTime); 
   const dronePowerSafety = SAFETYFUNC(trip.map(d => d.stats.dronePowerLoad), zoneTimes, totalTime);
@@ -548,6 +559,17 @@ const plans = expandedPlans.map((p, i) => {
   const windSafety = SAFETYFUNC(trip.map(d => d.stats.droneWindLoad), zoneTimes, totalTime); 
   const routeSafety = 0.3333 * (temperatureSafety + windSafety + ascentSafety);
 
+  console.log(windSafety, ascentSafety);
+  
+  const assetSafety = 
+    0.10 * droneBatterySafety + 
+    0.20 * dronePowerSafety + 
+    0.20 * temperatureSafety + 
+    0.20 * windSafety + 
+    0.25 * ascentSafety + 
+    0.05 * commSafety; 
+
+  /*
   const assetSafety = (1/6) * (
     droneBatterySafety + 
     dronePowerSafety + 
@@ -556,6 +578,7 @@ const plans = expandedPlans.map((p, i) => {
     ascentSafety + 
     commSafety
   );
+  */
 
   const patientSafety = 0.5 * (payloadSafety + payloadDeliveryTimeSafety);
 
