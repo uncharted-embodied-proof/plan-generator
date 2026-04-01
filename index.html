@@ -16,7 +16,7 @@
           font-size: 0.95rem;
           text-align: right;
           color: #FFAA28;
-          background: #334; /* Darker background for user messages */
+          background: #334;
           padding: 0.05rem 0.5rem;
           border-radius: 0.25rem ;
           margin-left: 1.5rem;
@@ -24,8 +24,8 @@
         .bot-message {
           font-size: 0.95rem;
           text-align: left;
-          color: #A5D6A7; /* Light green for dark theme */
-          background: #223; /* Even darker background for bot messages */
+          color: #A5D6A7;
+          background: #445;
           padding: 0.05rem 0.5rem;
           border-radius: 0.25rem ;
           margin-right: 1.5rem;
@@ -35,6 +35,10 @@
           font-size: 80%;
           font-weight: 300;
         }
+
+        ul {
+          font-weight: 200;
+        }
     </style>
 </head>
 <body class="d-flex flex-column min-vh-100">
@@ -42,13 +46,6 @@
         <div class="row flex-grow-1">
             <!-- Left Column: Summary and Metadata -->
             <div class="col-md-3 d-flex flex-column">
-                <!--
-                <div class="p-2 mb-1 bg-dark-subtle text-emphasis-dark rounded" style="font-size: 90%">
-                </div>
-                -->
-                <!--
-                <div id="map" class="flex-grow-1 mb-1">
-                -->
                 <div id="map" class="flex-grow-0 mb-1">
                   <p style="position: absolute; top: 20; z-index: 1; max-width: 17rem; font-size: 90%"> 
                     Starting at X, deliver to Y and come back to X.
@@ -144,7 +141,7 @@
          * D3 Gen force-directed graph
         **/
         function generateGraph(world, topIds = [], bottomIds = []) {
-          const width = 200;
+          const width = 250;
           const height = 350;
 
 
@@ -177,7 +174,7 @@
 
           nodeGroup.append("circle")
             .attr("r", 17)
-            .attr("fill", "#ccc")
+            .attr("fill", "#58B")
             .attr("stroke", (d) => {
               return "#222";
             })
@@ -185,9 +182,9 @@
 
           nodeGroup.append("text")
             .text(d => d.location)
-            .attr("x", -5)
-            .attr("y", 4)
-            .style("font-size", "14px")
+            .attr("x", -6)
+            .attr("y", 6)
+            .style("font-size", "16px")
             .style("font-weight", 900)
             .style("font-family", "sans-serif");
 
@@ -287,6 +284,8 @@
           ul.append('li').text(`Energy reserve: ${plan.summary.energyReserve}`);
           ul.append('li').text(`Delivery time margin: ${plan.summary.deliveryTimeMargin}`);
           ul.append('li').text(`Temp. deviation: ${plan.summary.payloadTemperatureDeviation}`);
+          ul.append('li').text(`Delivery time: ${plan.summary.deliveryTime}`);
+          ul.append('li').text(`Total time: ${plan.summary.time}`);
 
 
           elem.append('h5').text('Leg configurations');
@@ -328,7 +327,7 @@
           thead.append('th').text('Dist');
           thead.append('th').text('Weat.');
           thead.append('th').text('Temp.');
-          thead.append('th').text('Diff.');
+          thead.append('th').text('Difficulty');
 
           const tbody = table.append('tbody');
           for (const leg of legs) {
