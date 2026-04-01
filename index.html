@@ -60,19 +60,21 @@
             </div>
 
             <!-- Center Column: Chat Interface -->
-            <div class="col-md-6 d-flex flex-column">
+            <div class="col-md-9 d-flex flex-column" id="center-panel">
                 <div id="chat-container" class="flex-grow-1 d-flex flex-column border rounded p-2 mb-3" style="heigh: 500px">
-                    <div id="chat-history" class="flex-grow-1 overflow-auto border-bottom pb-2 mb-2"></div>
+                    <div id="chat-history" class="flex-grow-1 overflow-auto border-bottom pb-2 mb-2">
+                    </div>
                     <div id="input-area" class="d-flex">
                         <input type="text" id="message-input" class="form-control me-2" placeholder="Type your message...">
                         <button id="send-button" class="btn btn-primary">Send</button>
+                        <button id="show-right-panel-button" class="btn btn-secondary ms-2">Detail</button>
                     </div>
                     <p id="intro" class="text-muted mt-2" style="font-size: 90%">Start the conversation by asking the AI if there are valid COAs. You can query AI about constraints and query COAs. You can also ask the AI to describe/explain the governing model.</p>
                 </div>
             </div>
 
             <!-- Right Column: Drilldown -->
-            <div class="col-md-3 d-flex flex-column">
+            <div class="col-md-3 d-flex flex-column d-none" id="right-panel">
                 <div class="d-flex align-items-center mb-3">
                     <button onClick="prev()" class="btn btn-secondary btn-sm me-1">Prev</button>
                     <input type="number" id="plan-id" class="form-control form-control-sm text-center mx-1" style="width: 80px;">
@@ -80,6 +82,9 @@
                     <button onClick="view()" class="btn btn-primary btn-sm">View</button>
                 </div>
                 <div id="plan-viewer" class="flex-grow-1 bg-dark-subtle text-emphasis-dark rounded p-2">
+                </div>
+                <div class="d-flex align-items-center mb-3">
+                    <button id="hide-right-panel-button" class="btn btn-secondary btn-sm ms-2 d-none">Close</button>
                 </div>
             </div>
         </div>
@@ -374,57 +379,62 @@
           });
 
         async function sendMessage() {
-            const message = messageInput.value.trim();
-            if (!message) return;
+          const message = messageInput.value.trim();
+          if (!message) return;
 
-            appendMessage(message, 'user-message');
-            messageInput.value = '';
+          appendMessage(message, 'user-message');
+          messageInput.value = '';
 
-            try {
-                d3.select('#intro').remove();
+          try {
+            d3.select('#intro').remove();
 
-                const response = await fetch('/chat', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ message, history: conversationHistory })
-                });
+            appendMessage('...thinking...', 'bot-message');
+            const response = await fetch('/chat', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({ message, history: conversationHistory })
+            });
 
-                if (!response.ok) {
-                    throw new Error('Failed to get response from server');
-                }
-
-                const data = await response.json();
-                const reply = data.reply;
-
-                appendMessage(reply, 'bot-message');
-
-                // Update conversation history
-                conversationHistory.push({ role: 'user', parts: [{ text: message }] });
-                conversationHistory.push({ role: 'model', parts: [{ text: reply }] });
-
-            } catch (error) {
-                console.error('Error:', error);
-                appendMessage('Error: Could not connect to the server.', 'bot-message');
+            if (!response.ok) {
+              throw new Error('Failed to get response from server');
             }
+            removeLastMessage();
+
+            const data = await response.json();
+            const reply = data.reply;
+
+            appendMessage(reply, 'bot-message');
+
+            // Update conversation history
+            conversationHistory.push({ role: 'user', parts: [{ text: message }] });
+            conversationHistory.push({ role: 'model', parts: [{ text: reply }] });
+
+          } catch (error) {
+            console.error('Error:', error);
+            appendMessage('Error: Could not connect to the server.', 'bot-message');
+          }
         }
 
         function appendMessage(text, className) {
-            const messageElement = document.createElement('div');
-            messageElement.classList.add('message', className);
+          const messageElement = document.createElement('div');
+          messageElement.classList.add('message', className);
 
+          messageElement.innerHTML = marked.parse(text);
+          chatHistory.appendChild(messageElement);
+          chatHistory.scrollTop = chatHistory.scrollHeight;
+        }
 
-            messageElement.innerHTML = marked.parse(text);
-            chatHistory.appendChild(messageElement);
-            chatHistory.scrollTop = chatHistory.scrollHeight;
+        function removeLastMessage() {
+          chatHistory.removeChild(chatHistory.lastChild);
         }
 
         sendButton.addEventListener('click', sendMessage);
         messageInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                sendMessage();
-            }
+          if (e.key === 'Enter') {
+            sendMessage();
+          }
         });
 
 
@@ -442,6 +452,29 @@
           document.getElementById('counter').innerHTML = formatTime(c);
         }, 1000);
         */
+
+        // Right panel toggle functionality
+        const rightPanel = document.getElementById('right-panel');
+        const centerPanel = document.getElementById('center-panel');
+        const showRightPanelButton = document.getElementById('show-right-panel-button');
+        const hideRightPanelButton = document.getElementById('hide-right-panel-button');
+
+        showRightPanelButton.addEventListener('click', () => {
+          rightPanel.classList.remove('d-none');
+          centerPanel.classList.remove('col-md-9');
+          centerPanel.classList.add('col-md-6');
+          showRightPanelButton.classList.add('d-none');
+          hideRightPanelButton.classList.remove('d-none');
+        });
+
+        hideRightPanelButton.addEventListener('click', () => {
+          rightPanel.classList.add('d-none'); // Hide right panel
+          centerPanel.classList.remove('col-md-6');
+          centerPanel.classList.add('col-md-9'); // Expand center panel
+          hideRightPanelButton.classList.add('d-none'); // Hide hide button
+          showRightPanelButton.classList.remove('d-none'); // Show show button
+        });
+
 
     </script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>

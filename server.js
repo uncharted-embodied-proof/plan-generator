@@ -51,8 +51,6 @@ let codeUseCount = 0;
 
 
 const MODEL = "gemini-3.1-flash-lite-preview";
-
-// const CODE_MODEL = "gemini-2.5-flash-lite";
 const CODE_MODELS = [
   "gemini-3.1-flash-lite-preview",
   "gemini-2.5-flash-lite",
