@@ -36,11 +36,9 @@ async function readJSONLToArray(filePath) {
 
 dotenv.config();
 
+// Read data
 const world = JSON.parse(fs.readFileSync('./world.json', 'utf8'));
-// const plans = JSON.parse(fs.readFileSync('./plans.jsonl', 'utf8'));
-//
 const plans = await readJSONLToArray('./plans.jsonl');
-
 
 console.group('==== Data Stats ===');
 console.log(`# state=${world.nodes.length}, # edges=${world.edges.length}`);
@@ -51,9 +49,7 @@ console.groupEnd();
 const ANSWER_MAX = 2200;
 let codeUseCount = 0;
 
-// const MODEL = "gemini-1.5-flash";
-// const MODEL = "gemini-2.5-flash"; 
-// const MODEL = "gemini-2.5-flash-lite";
+
 const MODEL = "gemini-3.1-flash-lite-preview";
 
 // const CODE_MODEL = "gemini-2.5-flash-lite";
@@ -540,10 +536,7 @@ app.post('/chat', async (req, res) => {
         break;
       }
     } catch (err) {
-      // console.log('debug', typeof err);
-      // console.log('debug', JSON.stringify(err));
       console.log(`LLM errored out somewhere, ${err}`);
-
       const status = err?.status || err?.response?.status || error?.error?.code;
       if (status) {
         if (status == 429 || status >= 500) {
@@ -563,5 +556,6 @@ app.post('/chat', async (req, res) => {
 });
 
 app.listen(port, () => {
+  console.log('Starting server...');
   console.log(`Server listening at http://localhost:${port}`);
 });

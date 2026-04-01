@@ -33,6 +33,7 @@
 
         table {
           font-size: 80%;
+          font-weight: 300;
         }
     </style>
 </head>
@@ -156,7 +157,8 @@
             .data(links)
             .enter()
             .append("line")
-            .attr("stroke", "#aaa");
+            .attr('stroke-width', 2)
+            .attr("stroke", "#bbb");
 
           const nodeGroup = svg.append("g")
             .selectAll("g")
@@ -171,14 +173,17 @@
           nodeGroup.append("circle")
             .attr("r", 17)
             .attr("fill", "#ccc")
-            .attr("stroke", "#555")
-            .attr("stroke-width", 3);
+            .attr("stroke", (d) => {
+              return "#222";
+            })
+            .attr("stroke-width", 4);
 
           nodeGroup.append("text")
             .text(d => d.location)
             .attr("x", -5)
             .attr("y", 4)
             .style("font-size", "14px")
+            .style("font-weight", 900)
             .style("font-family", "sans-serif");
 
           const simulation = d3.forceSimulation(nodes)
@@ -194,11 +199,11 @@
           nodes.forEach(n => {
             if (topIds.includes(n.location)) {
               n.fx = width / 2;
-              n.fy = 50;
+              n.fy = height - 50;
             }
             if (bottomIds.includes(n.id)) {
               n.fx = width / 2;
-              n.fy = height - 50;
+              n.fy = 50;
             }
           });
 
