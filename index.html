@@ -279,7 +279,7 @@
           ul.append('li').text(`Temp. deviation: ${plan.summary.payloadTemperatureDeviation}`);
 
 
-          elem.append('h5').text('Legs');
+          elem.append('h5').text('Leg configurations');
           const table = elem.append('table').attr('class', 'table table-dark table-striped');
           const wmap = new Map(world.nodes.map(n => [n.id, n]));
 
@@ -360,48 +360,6 @@
           makeLegsTable(legs);
         });
 
-
-        async function streamJSONL(url) {
-          const res = await fetch(url);
-
-          if (!res.ok) {
-            throw new Error(`Failed: ${res.status}`);
-          }
-
-          const reader = res.body
-            .pipeThrough(new TextDecoderStream())
-            .getReader();
-
-          let buffer = "";
-
-          while (true) {
-            const { value, done } = await reader.read();
-            if (done) break;
-            buffer += value;
-
-            const lines = buffer.split("\n");
-            buffer = lines.pop(); // keep incomplete line
-
-            for (const line of lines) {
-              if (!line.trim()) continue;
-
-              const obj = JSON.parse(line);
-              handle(obj);
-            }
-            await new Promise(r => setTimeout(r, 0));
-          }
-
-          // last line
-          if (buffer.trim()) {
-            handle(JSON.parse(buffer));
-          }
-        }
-
-        function handle(obj) {
-          console.log(obj);
-        }
-
-
         fetch('/plans/1')
           .then(d => d.json())
           .then(d => {
@@ -409,25 +367,6 @@
               viewPlan(d.plan);
             }, 800);
           });
-
-
-        // streamJSONL('plans.jsonl');
-        /*
-        fetch('./plans.json', {
-          method: 'GET',
-          headers: { 'Content-Type': 'application/json' }
-        }).then(d => { return d.json()
-        }).then(d => { 
-          plans = d; 
-
-          setTimeout(() => {
-            planId = plans[0].id;
-            document.getElementById('plan-id').value = planId;
-            viewPlan(planId);
-          }, 500);
-        });
-        */
-
 
         async function sendMessage() {
             const message = messageInput.value.trim();

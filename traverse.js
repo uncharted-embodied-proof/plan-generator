@@ -33,7 +33,6 @@ function cartesianObject(obj) {
 // World specification
 ////////////////////////////////////////////////////////////////////////////////
 const NUM_STEPS = 4;
-
 const model = {
   comm: [1, 0],
   avoidance: [1, 0],
@@ -48,6 +47,8 @@ const model = {
 const normalScenario = {
   name: 'normal scenario',
   waypoints:['X', 'A', 'B', 'C', 'D', 'Y'],
+  startPoints: ['X'],
+  endPoints: ['Y'],
   getNextLocations: function (v) {
     if (v === 'X') return ['A', 'B', 'C', 'D'];
     if (v === 'Y') return ['A', 'B', 'C', 'D'];
@@ -131,6 +132,8 @@ const normalScenario = {
 const crazyScenario = {
   name: 'crazy scenario',
   waypoints:['X', 'B', 'C', 'D', 'Y'],
+  startPoints: ['X'],
+  endPoints: ['Y'],
   getNextLocations: function (v) {
     if (v === 'X') return ['B', 'C', 'D'];
     if (v === 'Y') return ['B', 'C', 'D'];
@@ -226,10 +229,8 @@ worldStates.forEach(s => {
 
 
 const world = { nodes: worldStates, edges: worldEdges };
-
-
-const starts = world.nodes.filter(n => n.location === 'X').map(n => n.id);
-const goals = world.nodes.filter(n => n.location === 'Y').map(n => n.id);
+const starts = world.nodes.filter(n => SCENARIO.startPoints.includes(n.location)).map(n => n.id);
+const goals = world.nodes.filter(n => SCENARIO.endPoints.includes(n.location)).map(n => n.id);
 
 console.log('world nodes ', world.nodes.length);
 console.log('world edges', world.edges.length);
@@ -526,8 +527,10 @@ const plans = expandedPlans.map((p, i) => {
     //  Finall compute if we completed the delivery
     // console.log('!!!', goals);
     // if (goals.includes(pid)) {
-    if (ws.leg[1] === 'Y') {
-      dropped = true;
+    for (const lp of SCENARIO.endPoints) {
+      if (ws.leg.includes(lp)) {
+        dropped = true;
+      }
     }
   }
 
@@ -559,7 +562,6 @@ const plans = expandedPlans.map((p, i) => {
   const windSafety = SAFETYFUNC(trip.map(d => d.stats.droneWindLoad), zoneTimes, totalTime); 
   const routeSafety = 0.3333 * (temperatureSafety + windSafety + ascentSafety);
 
-  console.log(windSafety, ascentSafety);
   
   const assetSafety = 
     0.10 * droneBatterySafety + 
