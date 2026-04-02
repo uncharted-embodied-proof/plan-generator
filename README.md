@@ -208,9 +208,6 @@ Once the above files have been generated, you can chat with an LLM agent to reas
 
 ```
 node ./server.js
-
-# for very large jsons
-node --max-old-space-size=8192 ./server.js
 ```
 
 Then the UI-interface is available at `http://localhost:8888`

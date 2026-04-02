@@ -60,14 +60,11 @@
 
             <!-- Right Column: Drilldown -->
             <div class="col-md-4 d-flex flex-column d-none" id="right-panel" style="max-height: 100vh; overflow-y: scroll">
-                <div class="d-flex align-items-center mb-3">
+                <div class="d-flex align-items-center mb-3 position-fixed" style="right: 20px">
                     <button id="hide-right-panel-button" class="btn btn-secondary btn-sm me-1">Close</button>
                     <button onClick="prev()" class="btn btn-primary btn-sm me-1">Prev</button>
                     <input type="number" id="plan-id" class="form-control form-control-sm text-center mx-1" style="width: 100px" oninput="view()">
                     <button onClick="next()" class="btn btn-primary btn-sm me-1">Next</button>
-                    <!--
-                    <button onClick="view()" class="btn btn-primary btn-sm">View</button>
-                    -->
                 </div>
                 <div id="plan-viewer" class="flex-grow-1 bg-dark-subtle text-emphasis-dark rounded p-2"></div>
 
@@ -140,16 +137,31 @@
          * D3 Gen force-directed graph
         **/
         function generateGraph(id, world, topIds, bottomIds) {
-          const width = 180;
+          const width = 170;
           const height = 350;
 
           const nodes = world.nodes.map(d => ({ ...d }));
           const links = world.edges.map(d => ({ ...d }));
 
+
           const svg = d3.select(`#${id}`)
             .append("svg")
             .attr("width", width)
             .attr("height", height);
+
+          const defs = svg.append("defs");
+          defs.append("marker")
+            .attr("id", "arrow")
+            .attr("viewBox", "0 -5 10 10")
+            .attr("refX", 17) 
+            .attr("refY", 2)
+            .attr("markerWidth", 6)
+            .attr("markerHeight", 6)
+            .attr("orient", "auto")
+            .append("path")
+            .attr("d", "M0,-5L10,0L0,5")
+            .attr("fill", "yellow");
+
 
           const link = svg.append("g")
             .selectAll("line")
@@ -161,6 +173,10 @@
             .attr("stroke", (d) => {
               return "#bbb";
             });
+
+
+          svg.append('g').classed('annotation', true);
+
 
           const nodeGroup = svg.append("g")
             .selectAll("g")
@@ -270,6 +286,35 @@
         // Plan/config view
         function viewPlan(plan) {
 
+          // Helpers
+          function curvedPath(x1, y1, x2, y2, curvature = 0.5) {
+            const mx = (x1 + x2) / 2;
+            const my = (y1 + y2) / 2;
+
+            // perpendicular offset
+            const dx = x2 - x1;
+            const dy = y2 - y1;
+
+            const norm = Math.sqrt(dx * dx + dy * dy);
+            const offsetX = -dy / norm * norm * curvature;
+            const offsetY = dx / norm * norm * curvature;
+
+            const cx = mx + offsetX;
+            const cy = my + offsetY;
+
+            return `M ${x1},${y1} Q ${cx},${cy} ${x2},${y2}`;
+          }
+          function shortenEnd(x1, y1, x2, y2, offset) {
+            const dx = x2 - x1;
+            const dy = y2 - y1;
+            const len = Math.sqrt(dx * dx + dy * dy);
+
+            return {
+              x: x2 - (dx / len) * offset,
+              y: y2 - (dy / len) * offset
+            };
+          }
+
           const elem = d3.select('#plan-viewer');
           elem.selectAll('*').remove();
 
@@ -323,15 +368,42 @@
 
           // Adjust highlight
           const trip = plan.trip;
-          d3.select('#map').selectAll('.leg')
-            .attr('opacity', d => {
-              const leg = `${d.source.location}${d.target.location}`;
-              const legr = `${d.target.location}${d.source.location}`;
-              if (trip.filter(t => t.leg.leg === leg || t.leg.leg === legr).length > 0) {
-                return 1.0;
-              }
-              return 0.25;
-            });
+          // d3.select('#map').selectAll('.leg')
+          //   .attr('opacity', d => {
+          //     const leg = `${d.source.location}${d.target.location}`;
+          //     const legr = `${d.target.location}${d.source.location}`;
+          //     if (trip.filter(t => t.leg.leg === leg || t.leg.leg === legr).length > 0) {
+          //       return 1.0;
+          //     }
+          //     return 0.25;
+          //   });
+
+          const nodesData = d3.select('#map').selectAll('circle').data();
+          const annotationG = d3.select('#map').select('svg').select('.annotation');
+          annotationG.selectAll('*').remove(); 
+          console.log('nodes data', nodesData);
+
+          let arcCnt = 0;
+          for (const obj of trip) {
+            const start = arcCnt < 2 ? obj.leg.leg[0] : obj.leg.leg[1];
+            const end = arcCnt < 2 ? obj.leg.leg[1] : obj.leg.leg[0];
+
+            const nodeStart = nodesData.find(n => n.location === start);
+            const nodeEnd = nodesData.find(n => n.location === end);
+
+            const end2 = shortenEnd(nodeStart.x, nodeStart.y, nodeEnd.x, nodeEnd.y, 12); // 20px shorter
+
+            annotationG.append("path")
+              .attr('class', 'leg-path')
+              .attr("d", curvedPath(nodeStart.x, nodeStart.y, end2.x, end2.y))
+              .attr("fill", "none")
+              .attr("stroke", "yellow")
+              .attr("stroke-width", 2)
+              .attr("marker-end", "url(#arrow)");
+            arcCnt ++;
+          }
+
+
 
 
           d3.select('#leg-table').selectAll('tr').style('opacity', d => {
@@ -342,11 +414,6 @@
             }
             return 0.5
           });
-
-
-
-          // elem.append('div').attr('id', 'plan123');
-          // generateGraph('plan123', world, ['X'], ['Y']);
         }
 
         // Leg attribute table
@@ -468,7 +535,6 @@
             sendMessage();
           }
         });
-
 
         // Stopwatch
         /*
