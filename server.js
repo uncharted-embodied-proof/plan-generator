@@ -396,6 +396,10 @@ app.post('/chat', async (req, res) => {
     console.log(`Model: ${MODEL}`);
     console.log(`Tool choice: ${toolChoice}`);
 
+
+    // old constraint
+    // - abs(payloadTemperatureDeviation) should be 0
+
     try {
       const response = await ai.models.generateContent({
         model: MODEL,
@@ -406,7 +410,11 @@ app.post('/chat', async (req, res) => {
             We are working with the following constraints, thus making the plans potentially invalid:
             - Any plans where energyReserve falls below 0.1
             - Any plans with negative deliveryTimeMargin
-            - abs(payloadTemperatureDeviation) should be 0
+            - Any plans where bloodIntegrity falls below 0.8
+            - Any plans where assetSafety falls below 0.8
+            - Any plans where patientSurvival falls below 0.8
+            - Any plans where totalAvoid falls below 4
+            - Any plans where totalComm falls below 4
 
 
             The plans are based on a domain specific mental model. The model outlines the how to think about the situation at hand, from high level goal oriented concepts, ddwn to the physical states. You think kind of think of this as an edge list.
@@ -538,7 +546,7 @@ app.post('/chat', async (req, res) => {
       const status = err?.status || err?.response?.status || error?.error?.code;
       if (status) {
         if (status == 429 || status >= 500) {
-          responseText = 'Something bad happened...we probably hit a service-level rate limit';
+          responseText = `Something bad happened (status = ${status} ) ... service is not available or reached a rate limitation`;
         } else {
           responseText = `Something bad happened, status code = ${status} `;
         }
