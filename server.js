@@ -50,10 +50,19 @@ const ANSWER_MAX = 2200;
 let codeUseCount = 0;
 
 
-const MODEL = "gemini-3.1-flash-lite-preview";
+// const MODEL = "gemini-3.1-flash-lite-preview";
+// const CODE_MODELS = [
+//   "gemini-3.1-flash-lite-preview",
+//   "gemini-2.5-flash-lite",
+// ];
+
+
+const MODEL = "gemma-4-26b-a4b-it";
 const CODE_MODELS = [
-  "gemini-3.1-flash-lite-preview",
-  "gemini-2.5-flash-lite",
+  "gemma-3-31b-it",
+  "gemma-4-26b-a4b-it"
+  // "gemini-3.1-flash-lite-preview",
+  // "gemini-2.5-flash-lite",
 ];
 
 
@@ -355,6 +364,15 @@ const ai = new GoogleGenAI({
 });
 
 
+async function listModels() {
+  const models = await ai.models.list();
+
+  for await (const model of models) {
+    console.log(model.name);
+  }
+}
+// listModels();
+
 
 app.get('/', (req, res) => {
   res.sendFile(path.resolve(process.cwd(), 'index.html'));
@@ -395,7 +413,6 @@ app.post('/chat', async (req, res) => {
     console.log(`Iteration: ${iteration}`);
     console.log(`Model: ${MODEL}`);
     console.log(`Tool choice: ${toolChoice}`);
-
 
     // old constraint
     // - abs(payloadTemperatureDeviation) should be 0
