@@ -57,9 +57,11 @@ let codeUseCount = 0;
 // ];
 
 
-const MODEL = "gemma-4-26b-a4b-it";
+// const MODEL = "gemma-4-26b-a4b-it";
+const MODEL = "gemma-4-31b-it";
+
 const CODE_MODELS = [
-  "gemma-3-31b-it",
+  "gemma-4-31b-it",
   "gemma-4-26b-a4b-it"
   // "gemini-3.1-flash-lite-preview",
   // "gemini-2.5-flash-lite",
@@ -328,8 +330,13 @@ async function runTool(name, args) {
 
       if (Array.isArray(evalResult)) {
         if (evalResult.length === 0) {
-          console.log('!! no results found');
-          return { answer: 'No results found' };
+          console.log('!!!! no results found');
+          return { 
+            answer: `
+            === Tool answer === 
+            No results found, there are no valid answers.
+            ` 
+          };
         }
       }
       console.log(`<< result: `, evalResult);
@@ -371,7 +378,7 @@ async function listModels() {
     console.log(model.name);
   }
 }
-// listModels();
+listModels();
 
 
 app.get('/', (req, res) => {
@@ -407,9 +414,14 @@ app.post('/chat', async (req, res) => {
 
   const contents = [...history, { role: "user", parts: [{ text: message }] }];
 
+  let numToolCalls = 0;
   while (true) {
     iteration ++;
-    const toolChoice = contents.some(c => c.role === 'tool') ? 'none' : 'auto';
+    let toolChoice = contents.some(c => c.role === 'tool') ? 'none' : 'auto';
+    if (numToolCalls > 2) {
+      toolChoice = 'none';
+    }
+
     console.log(`Iteration: ${iteration}`);
     console.log(`Model: ${MODEL}`);
     console.log(`Tool choice: ${toolChoice}`);
@@ -513,6 +525,8 @@ app.post('/chat', async (req, res) => {
             General hints
             - The terms "plan" and "COA" are equivalent, if the operator is asking about COAs they are asking about plans
 
+            - If asking for the top plans or best plans but does not specify a criteria, use patientSurvival and assetSafety for your evaluation while respecting all constraints
+
             - When the query asking time related questions, it is important to distinguish between deliveryTime and time. When the query is asking about target/destination, the time metric to be evaluated is usually "summary.deliveryTime"
 
             - If the operator asks about constraints, tradeoffs, and variables, answer the question directly, do not call a Tool. 
@@ -520,6 +534,7 @@ app.post('/chat', async (req, res) => {
             - When a tool returns a response, interpret the result and provide the final answer to the user. Do not call another tool unless absolutely necessary.
 
             - For quantitative or existential queries, eg: "are there ...", "what is the number of ...", you should return the NUMBER of matching plans and not the plan objects
+
 
 
             Important 
@@ -539,6 +554,7 @@ app.post('/chat', async (req, res) => {
 
       const toolCall = parts.find(p => p.functionCall);
       if (toolCall) {
+        numToolCalls ++;
         const { name, args } = toolCall.functionCall;
         console.log('tool needed', name, args);
         const result = await runTool(name, args);
