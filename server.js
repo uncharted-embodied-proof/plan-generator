@@ -1,6 +1,7 @@
 import dotenv from "dotenv";
 import express from "express";
 import { GoogleGenAI } from "@google/genai";
+// import { VertexAI } from '@google-cloud/vertexai';
 import fs from "fs";
 import readline from 'readline';
 import path from "path";
@@ -46,7 +47,7 @@ console.log(`# plans=${plans.length}`);
 console.log('');
 console.groupEnd();
 
-const ANSWER_MAX = 2200;
+const ANSWER_MAX = 2000;
 let codeUseCount = 0;
 
 
@@ -58,15 +59,22 @@ let codeUseCount = 0;
 
 
 // const MODEL = "gemma-4-26b-a4b-it";
-const MODEL = "gemma-4-31b-it";
+// const MODEL = "gemma-4-31b-it";
+// 
+// const CODE_MODELS = [
+//   "gemma-4-31b-it",
+//   "gemma-4-26b-a4b-it"
+//   // "gemini-3.1-flash-lite-preview",
+//   // "gemini-2.5-flash-lite",
+// ];
 
+
+
+/* Vertex AI configuration */
+const MODEL = 'gemini-2.5-flash';
 const CODE_MODELS = [
-  "gemma-4-31b-it",
-  "gemma-4-26b-a4b-it"
-  // "gemini-3.1-flash-lite-preview",
-  // "gemini-2.5-flash-lite",
+  'gemini-2.5-flash'
 ];
-
 
 const app = express();
 const port = 8888;
@@ -367,9 +375,19 @@ async function runTool(name, args) {
 
 
 const ai = new GoogleGenAI({
-  apiKey: process.env.GEMINI_API_KEY,
+  vertexai: true,
+  project: 'embodied-proof',
+  location: 'us-east1',
 });
 
+async function main() {
+  const response = await ai.models.generateContent({
+    model: "gemini-2.5-flash",
+    contents: "what is 123 + 12345",
+  });
+
+  console.log(response.text);
+}
 
 async function listModels() {
   const models = await ai.models.list();
@@ -378,7 +396,37 @@ async function listModels() {
     console.log(model.name);
   }
 }
-listModels();
+
+
+// await listModels();
+// process.exit(0);
+
+
+
+// const ai = new GoogleGenAI({
+//   apiKey: process.env.GEMINI_API_KEY,
+// });
+
+// Initialize Vertex AI
+// const vertexAI = new VertexAI({
+//   project: 'embodied-proof',
+//   location: 'us-east1',
+// });
+
+
+
+
+
+
+
+// async function listModels() {
+//   const models = await ai.models.list();
+// 
+//   for await (const model of models) {
+//     console.log(model.name);
+//   }
+// }
+// listModels();
 
 
 app.get('/', (req, res) => {
@@ -523,6 +571,8 @@ app.post('/chat', async (req, res) => {
 
 
             General hints
+            - Check the plan satisfies the constraints, or criteria provided by the query
+
             - The terms "plan" and "COA" are equivalent, if the operator is asking about COAs they are asking about plans
 
             - If asking for the top plans or best plans but does not specify a criteria, use patientSurvival and assetSafety for your evaluation while respecting all constraints
