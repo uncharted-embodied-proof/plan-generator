@@ -39,6 +39,9 @@
     ul {
       font-weight: 200;
     }
+    textarea {
+      overflow-y: hidden;
+    }
   </style>
 </head>
 <body class="d-flex flex-column min-vh-100">
@@ -50,7 +53,7 @@
                     <div id="chat-history" class="flex-grow-1 overflow-auto border-bottom pb-2 mb-2">
                     </div>
                     <div id="input-area" class="d-flex">
-                        <input type="text" id="message-input" class="form-control me-2" placeholder="Type your message...">
+                        <textarea id="message-input" class="form-control me-2" placeholder="Type your message..." rows="1" oninput="autoExpand(this)"></textarea>
                         <button id="send-button" class="btn btn-primary">Send</button>
                         <button id="show-right-panel-button" class="btn btn-secondary ms-2">Detail</button>
                     </div>
@@ -483,6 +486,7 @@
 
           appendMessage(message, 'user-message');
           messageInput.value = '';
+          messageInput.style.height = 'inherit';
 
           try {
             d3.select('#intro').remove();
@@ -529,10 +533,27 @@
           chatHistory.removeChild(chatHistory.lastChild);
         }
 
+        function autoExpand(field) {
+          field.style.height = 'inherit';
+          // Get the computed natural height
+          const computed = window.getComputedStyle(field);
+          const height = parseInt(computed.getPropertyValue('border-top-width'), 10)
+                       + parseInt(computed.getPropertyValue('padding-top'), 10)
+                       + field.scrollHeight
+                       + parseInt(computed.getPropertyValue('padding-bottom'), 10)
+                       + parseInt(computed.getPropertyValue('border-bottom-width'), 10);
+          field.style.height = height + 'px';
+        }
+
+
         sendButton.addEventListener('click', sendMessage);
-        messageInput.addEventListener('keypress', (e) => {
-          if (e.key === 'Enter') {
+        messageInput.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault(); // Prevent default to avoid new line in single line submit
             sendMessage();
+          } else if (e.key === 'Enter' && e.shiftKey) {
+            // Allow default behavior for Shift + Enter (newline)
+            // No action needed here, default behavior will insert a newline
           }
         });
 
