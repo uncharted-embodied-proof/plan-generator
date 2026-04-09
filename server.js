@@ -346,7 +346,7 @@ async function runTool(name, args) {
           };
         }
       }
-      console.log(`<< result: `, evalResult);
+      console.log(`tool result: `, evalResult);
 
       return { 
         answer: `
@@ -547,6 +547,10 @@ app.post('/chat', async (req, res) => {
             - When a tool returns a response, interpret the result and provide the final answer to the user. Do not call another tool unless absolutely necessary.
 
             - For quantitative or existential queries, eg: "are there ...", "what is the number of ...", you should return the NUMBER of matching plans and not the plan objects
+             
+            - Queries need to be numerically precise, if the query is unclear, return text asking for clarification
+
+            - You cannot run or execute plans, if the operator indicate they want a specific plan, provide the trip infomration in the chosen plan
 
 
 
@@ -604,6 +608,15 @@ app.post('/chat', async (req, res) => {
     }
   }
   console.groupEnd();
+
+  // Log response
+  const formatted2 = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} `
+    + `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+  console.log('');
+  console.group(`<<< [${formatted2}]`);
+  console.log(responseText);
+  console.groupEnd();
+
   res.send({ reply: responseText });
 });
 
