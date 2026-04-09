@@ -10,11 +10,23 @@ The script will generate all combination of plans that have reached the target a
 - Run `npm install`
 - Run `pip install -r requirements.txt`
 
-You need to create an `.env` file with a valid GEMINI_API_KEY entry
+
+
+You need to create an `.env` file with a valid credential entry
+
+For Gemini Developer API
 
 ```
-GEMINI_API_KEY=<your_api_key>
+GEMINI_API_KEY=<api_key>
 ```
+
+For Vertex AI
+```
+GOOGLE_CLOUD_PROJECT=<project_id>
+GOOGLE_CLOUD_LOCATION=<location>
+GOOGLE_APPLICATION_CREDENTIALS=<path_to_credential_json>
+```
+
 
 
 ### Leg and Plans

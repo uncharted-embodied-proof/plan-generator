@@ -51,30 +51,29 @@ const ANSWER_MAX = 2000;
 let codeUseCount = 0;
 
 
-// const MODEL = "gemini-3.1-flash-lite-preview";
-// const CODE_MODELS = [
-//   "gemini-3.1-flash-lite-preview",
-//   "gemini-2.5-flash-lite",
-// ];
+const E = process.env;
+
+const ai = E.GEMINI_API_KEY ? 
+  new GoogleGenAI({
+    vertexai: false,
+    apiKey: E.GEMINI_API_KEY,
+  }) :
+  new GoogleGenAI({
+    vertexai: true,
+    project: E.GOOGLE_CLOUD_PROJECT,
+    location: E.GOOGLE_CLOUD_LOCATION
+  });
 
 
-// const MODEL = "gemma-4-26b-a4b-it";
-// const MODEL = "gemma-4-31b-it";
-// 
-// const CODE_MODELS = [
-//   "gemma-4-31b-it",
-//   "gemma-4-26b-a4b-it"
-//   // "gemini-3.1-flash-lite-preview",
-//   // "gemini-2.5-flash-lite",
-// ];
+const MODEL = E.GEMINI_API_KEY ? 
+  'gemma-4-26b-a4b-it' :
+  'gemini-2.5-flash';
 
 
+const CODE_MODELS = E.GEMINI_API_KEY ? 
+  [ 'gemma-4-31b-it', 'gemma-4-26b-a4b-it'] :
+  [ 'gemini-2.5-flash' ];
 
-/* Vertex AI configuration */
-const MODEL = 'gemini-2.5-flash';
-const CODE_MODELS = [
-  'gemini-2.5-flash'
-];
 
 const app = express();
 const port = 8888;
@@ -374,13 +373,8 @@ async function runTool(name, args) {
 }
 
 
-const ai = new GoogleGenAI({
-  vertexai: true,
-  project: 'embodied-proof',
-  location: 'us-east1',
-});
 
-async function main() {
+async function test() {
   const response = await ai.models.generateContent({
     model: "gemini-2.5-flash",
     contents: "what is 123 + 12345",
@@ -396,37 +390,6 @@ async function listModels() {
     console.log(model.name);
   }
 }
-
-
-// await listModels();
-// process.exit(0);
-
-
-
-// const ai = new GoogleGenAI({
-//   apiKey: process.env.GEMINI_API_KEY,
-// });
-
-// Initialize Vertex AI
-// const vertexAI = new VertexAI({
-//   project: 'embodied-proof',
-//   location: 'us-east1',
-// });
-
-
-
-
-
-
-
-// async function listModels() {
-//   const models = await ai.models.list();
-// 
-//   for await (const model of models) {
-//     console.log(model.name);
-//   }
-// }
-// listModels();
 
 
 app.get('/', (req, res) => {
