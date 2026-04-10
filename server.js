@@ -571,6 +571,12 @@ app.post('/chat', async (req, res) => {
 
       const toolCall = parts.find(p => p.functionCall);
       if (toolCall) {
+        if (iteration >= 3) {
+          console.log('!! iteration maximum reached, exiting...');
+          responseText = 'Cannot answer the query, please be more specific, and/or break down into smaller asks.';
+          break;
+        }
+
         numToolCalls ++;
         const { name, args } = toolCall.functionCall;
         console.log('tool needed', name, args);
@@ -593,7 +599,7 @@ app.post('/chat', async (req, res) => {
       }
     } catch (err) {
       console.log(`LLM errored out somewhere, ${err}`);
-      const status = err?.status || err?.response?.status || error?.error?.code;
+      const status = err?.status || err?.response?.status || err?.error?.code;
       if (status) {
         if (status == 429 || status >= 500) {
           responseText = `Something bad happened (status = ${status} ) ... service is not available or reached a rate limitation`;
