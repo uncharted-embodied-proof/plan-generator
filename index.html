@@ -334,11 +334,11 @@
           const ul = elem.append('ul');
           ul.append('li').text(`Patient survival: ${plan.summary.patientSurvival.toFixed(2)}`);
           ul.append('li').text(`Asset safety: ${plan.summary.assetSafety.toFixed(2)}`);
-          ul.append('li').text(`Energy reserve: ${plan.summary.energyReserve}`);
-          ul.append('li').text(`Delivery time margin: ${plan.summary.deliveryTimeMargin}`);
-          ul.append('li').text(`Temp. deviation: ${plan.summary.payloadTemperatureDeviation}`);
-          ul.append('li').text(`Delivery time: ${plan.summary.deliveryTime}`);
-          ul.append('li').text(`Total time: ${plan.summary.time}`);
+          ul.append('li').text(`Energy reserve: ${plan.summary.energyReserve * 100}%`);
+          ul.append('li').text(`Delivery time margin: ${plan.summary.deliveryTimeMargin} seconds`);
+          ul.append('li').text(`Temp. deviation: ${plan.summary.payloadTemperatureDeviation} C`);
+          ul.append('li').text(`Delivery time: ${plan.summary.deliveryTime} seconds`);
+          ul.append('li').text(`Total time: ${plan.summary.time} seconds`);
 
 
           elem.append('h5').text('Leg configurations');
@@ -427,9 +427,9 @@
           const table = elem.append('table').attr('class', 'table table-dark table-striped').attr('id', 'leg-table');
           const thead = table.append('thead');
           thead.append('th').text('Leg');
-          thead.append('th').text('Dist');
+          thead.append('th').text('Dist (km)');
           thead.append('th').text('Weat.');
-          thead.append('th').text('Temp.');
+          thead.append('th').text('Temp (C)');
           thead.append('th').text('Difficulty');
 
           const tbody = table.append('tbody');
