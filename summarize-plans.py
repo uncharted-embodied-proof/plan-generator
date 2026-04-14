@@ -8,30 +8,28 @@ from datasets import Dataset
 
 pipeline = pipeline(
     "text-generation",
-    model="Gensyn/Qwen2.5-1.5B-Instruct",
+    # model="Gensyn/Qwen2.5-1.5B-Instruct",
+    model="Qwen/Qwen2.5-3B-Instruct",
     trust_remote_code=True,
     device_map="auto",
 )
 
 def build_prompt(plan_dict):
+    summary = plan_dict["summary"]
     return f"""
-    Summarize the following plan in one less than 10 words:
+    Reason over these metrics from a nav plan, higher values are better, less than 0.5 is not ideal
+    - patientSurvival: {summary["patientSurvival"]}
+    - assetSafety: {summary["assetSafety"]}
+    - droneSafety: {summary["droneSafety"]}
+    - routeSafety: {summary["routeSafety"]}
 
-    Use thses important attributes in the 'summary' section
-    - energyReserve max out at 1.0
-    - patientSurvival max out at 1.0
-    - assetSafety max out at 1.0
-    - bloodIntegrity max out at 1.0
-    - deliveryTimeMargin has no max, but higher is better
+    Also:
+    - If energyReserve ({summary["energyReserve"]}) is negative the flight does not come back.
+    - If deliveryTimeMargin ({summary["deliveryTimeMargin"]}) is negative, the flight is late on delivery.
+    - if difficulty ({summary["difficulty"]}) range from 0 (easy) to over 100 (hard)
 
-    If energyReserve is negative the flight does not come back.
-    If deliveryTimeMargin is negative, the flight is late on delivery.
-
-    The plan:
-    {plan_dict}
+    Summarize the above in a creative, short sentence in fewer than 10 words describing what can be achieved and the trade-offs
     """
-
-
 
 
 
@@ -41,7 +39,7 @@ with open("./plans.jsonl", "r", encoding="utf-8") as f:
     for line in f:
         plan = json.loads(line)
         plan["trip"] = None
-        plans.append(json.loads(line))
+        plans.append(plan)
 
 
 def summarize(plan: Dict):
@@ -50,7 +48,7 @@ def summarize(plan: Dict):
       "role": "user",
       "content": build_prompt(plan)
     }
-  ], max_new_tokens = 40)
+  ], max_new_tokens = 25)
   summary_text = summary[0]["generated_text"][1]["content"]
   return summary_text
 
