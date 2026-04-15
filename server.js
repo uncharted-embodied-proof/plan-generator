@@ -616,7 +616,7 @@ app.post('/chat', async (req, res) => {
       const status = err?.status || err?.response?.status || err?.error?.code;
       if (status) {
         if (status == 429 || status >= 500) {
-          responseText = `Something bad happened (status = ${status} ) ... service is not available or reached a rate limitation`;
+          responseText = `Something bad happened (status = ${status} ), service is not available or reached a rate limitation. Try again in a minute or two.`;
         } else {
           responseText = `Something bad happened, status code = ${status} `;
         }
