@@ -1,11 +1,21 @@
 import dotenv from "dotenv";
 import express from "express";
 import { GoogleGenAI } from "@google/genai";
-// import { VertexAI } from '@google-cloud/vertexai';
 import fs from "fs";
 import readline from 'readline';
 import path from "path";
 import { spawn } from 'child_process';
+
+
+// Date formatting
+const date_str = () => {
+  const d = new Date();
+  const pad = n => String(n).padStart(2, '0');
+  const formatted = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} `
+    + `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+
+  return formatted;
+}
 
 
 async function readJSONL(filePath, onObject) {
@@ -40,6 +50,7 @@ dotenv.config();
 // Read data
 const world = JSON.parse(fs.readFileSync('./world.json', 'utf8'));
 const plans = await readJSONLToArray('./plans.jsonl');
+const titles = await readJSONLToArray('./titles.jsonl');
 
 console.group('==== Data Stats ===');
 console.log(`# state=${world.nodes.length}, # edges=${world.edges.length}`);
@@ -73,6 +84,26 @@ const MODEL = E.GEMINI_API_KEY ?
 const CODE_MODELS = E.GEMINI_API_KEY ? 
   [ 'gemma-4-31b-it', 'gemma-4-26b-a4b-it'] :
   [ 'gemini-2.5-flash' ];
+
+
+
+async function test() {
+  const response = await ai.models.generateContent({
+    model: "gemini-2.5-flash",
+    contents: "what is 123 + 12345",
+  });
+
+  console.log(response.text);
+}
+
+
+async function listModels() {
+  const models = await ai.models.list();
+
+  for await (const model of models) {
+    console.log(model.name);
+  }
+}
 
 
 const app = express();
@@ -373,25 +404,6 @@ async function runTool(name, args) {
 }
 
 
-
-async function test() {
-  const response = await ai.models.generateContent({
-    model: "gemini-2.5-flash",
-    contents: "what is 123 + 12345",
-  });
-
-  console.log(response.text);
-}
-
-async function listModels() {
-  const models = await ai.models.list();
-
-  for await (const model of models) {
-    console.log(model.name);
-  }
-}
-
-
 app.get('/', (req, res) => {
   res.sendFile(path.resolve(process.cwd(), 'index.html'));
 });
@@ -401,6 +413,13 @@ app.get('/plans/:id', (req, res) => {
   const id = req.params.id || plans[0].id;
   const plan = plans.find(d => d.id === +id);
   res.send({ plan: plan});
+});
+
+
+app.get('/plans/:id/title', (req, res) => {
+  const id = req.params.id || plans[0].id;
+  const title = titles.find(d => d.id === +id);
+  res.send({ title: title.summary });
 });
 
 
@@ -414,13 +433,8 @@ app.post('/chat', async (req, res) => {
   let iteration = 0;
   let responseText = '';
 
-  const d = new Date();
-  const pad = n => String(n).padStart(2, '0');
-  const formatted = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} `
-    + `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
-
   console.log('');
-  console.group(`>>> [${formatted}]`);
+  console.group(`>>> [${date_str()}]`);
   console.log(`Query: ${message}`);
 
   const contents = [...history, { role: "user", parts: [{ text: message }] }];
@@ -616,10 +630,8 @@ app.post('/chat', async (req, res) => {
   console.groupEnd();
 
   // Log response
-  const formatted2 = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} `
-    + `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
   console.log('');
-  console.group(`<<< [${formatted2}]`);
+  console.group(`<<< [${date_str()}]`);
   console.log(responseText);
   console.groupEnd();
 

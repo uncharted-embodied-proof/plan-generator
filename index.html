@@ -331,6 +331,17 @@
 
 
           elem.append('h5').text('Summary');
+
+          const titleElem = elem.append('div');
+          titleElem.style('color', '#EB0');
+
+          fetch(`/plans/${planId}/title`)
+            .then(d => d.json())
+            .then(d => {
+              titleElem.node().innerHTML = d.title;
+            });
+
+
           const ul = elem.append('ul');
           ul.append('li').text(`Patient survival: ${plan.summary.patientSurvival.toFixed(2)}`);
           ul.append('li').text(`Asset safety: ${plan.summary.assetSafety.toFixed(2)}`);
@@ -384,7 +395,6 @@
           const nodesData = d3.select('#map').selectAll('circle').data();
           const annotationG = d3.select('#map').select('svg').select('.annotation');
           annotationG.selectAll('*').remove(); 
-          console.log('nodes data', nodesData);
 
           let arcCnt = 0;
           for (const obj of trip) {
