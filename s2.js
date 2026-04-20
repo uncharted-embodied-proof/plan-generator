@@ -4,6 +4,10 @@ import fs from "fs";
 import readline from 'readline';
 import path from "path";
 
+
+import pLimit from "p-limit";
+import Bottleneck from "bottleneck";
+
 async function readJSONL(filePath, onObject) {
   const stream = fs.createReadStream(filePath, { encoding: 'utf8' });
   const rl = readline.createInterface({
@@ -62,8 +66,9 @@ async function listModels() {
 }
 
 
-async function test(plan, style = 'Be very very creative.') {
+function createPrompt(plan, styleHint) {
   const summary = plan.summary;
+  const style = styleHint || 'Be very very creative';
 
   const goodScale = (value) => {
     if (value > 0.9) return 'Outstanding';
@@ -119,6 +124,9 @@ async function test(plan, style = 'Be very very creative.') {
     Do not apply markdown formatting
   `;
 
+  return prompt;
+
+  /*
   const response = await ai.models.generateContent({
     model: "gemini-2.5-flash-lite",
     contents: prompt 
@@ -126,29 +134,103 @@ async function test(plan, style = 'Be very very creative.') {
   return response.text;
   console.log(`id=${plan.id}`, plan.summary);
   console.log(response.text);
+  */
 }
 
 
-const index = +(process.argv[2]);
-const style = process.argv[3];
+const limit = pLimit(10); // concurrency cap
+const limiter = new Bottleneck({
+  minTime: 150 // ~6–7 requests per second (1000ms / 150 ≈ 6.6)
+});
 
-const plan = plans[index];
+async function callModel(prompt) {
+  return limiter.schedule(() =>
+    limit(() =>
+      ai.models.generateContent({
+        model: "gemini-2.5-flash-lite",
+        contents: prompt
+      })
+    )
+  );
+}
 
-let title = '';
-const start = Date.now();
-if (!style) {
-  console.log('default style');
-  title = await test(plan);
+async function withRetry(fn, retries = 2) {
+  let attempt = 0;
+  while (attempt < retries) {
+    try {
+      return await fn();
+    } catch (err) {
+      attempt++;
+      if (attempt >= retries) throw err;
+      await new Promise(r => setTimeout(r, 500 * attempt)); // backoff
+    }
+  }
+}
+
+if (process.argv.length === 5) {
+  const startIdx = +(process.argv[2]);
+  const endIdx = +(process.argv[3]);
+  const style = process.argv[4];
+  const prompts = [];
+
+  for (let i = startIdx; i <= endIdx; i++) {
+    prompts.push(createPrompt(plans[i], style));
+  }
+
+  const total = prompts.length;
+  let completed = 0;
+
+  const results = await Promise.all(
+    prompts.map(prompt =>
+      withRetry(() => callModel(prompt)).then(res => {
+        completed ++;
+        if (completed % 10 === 0) {
+          console.log(`Done ${completed} / ${total}`);
+        }
+        return res;
+      })
+    )
+  );
+  console.log(`Done ${completed} / total`);
+
+  for (let i = startIdx; i <= endIdx; i++) {
+    const obj = {
+      id: plans[i].id, 
+      title: results[i].text
+    };
+    console.log(obj);
+  }
+
+} else if (process.argv.length === 4) {
+  const index = +(process.argv[2]);
+  const style = process.argv[3];
+  const plan = plans[index];
+  const prompt = createPrompt(plan, style);
+
+  const start = Date.now();
+  const results = await Promise.all([
+    withRetry(() => callModel(prompt))
+  ]);
+  const end = Date.now();
+  const title = results[0].text;
+
+  console.log(`COA ${plan.id}`);
+  console.log(plan.summary);
+  console.log(`title=${title}`);
+  console.log(`done in ${(end - start)}ms`);
 } else {
-  console.log(`custom style: ${style}`);
-  title = await test(plan, style);
-}
-const end = Date.now();
+  console.log(` 
+  Usage:
+    node ./s2.js <start> <end> [style]
 
-console.log(`COA ${plan.id}`);
-console.log(plan.summary);
-console.log(`title=${title}`);
-console.log(`done in ${(end - start)}ms`);
+    or
+
+    node ./s2.js <planId> [style]
+  `)
+}
+
+
+
 process.exit(0)
 
 

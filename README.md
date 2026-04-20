@@ -230,9 +230,13 @@ Then the UI-interface is available at `http://localhost:8888`
 Generate a short, textual summary based on plan summary. You can supply a custom text to change the style/tone the LLM responds with.
 
 ```
-node ./s2.js <plan_id> [style]
+# Usage 1: Single generation
+node ./s2.js <plan_id> [style string]
 
-# e.g. 
-node ./s2.js 1234 "Be a funny comedian"
+# Usage 2: Batched generation
+node ./s2.js <startidx> <endidx> [style string]
+
+# e.g.
+node ./s2.js 0 50 "Be consice but creative"
 ```
 
