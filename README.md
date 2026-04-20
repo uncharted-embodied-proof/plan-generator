@@ -1,7 +1,8 @@
 ## Plan and state generator
-This repo provides two things:
+This repo provides three things:
 - A script that generates possible world-graph, along with listing viable plans (a listing of traversed states and summarized stats).
 - A simple UI-interface to chat and reaqson about the generated files
+- A script to generate a summary for a given COA
 
 The script will generate all combination of plans that have reached the target and navigated back to the starting point. However not all plans are physically viable (eg: some plans will have negative battery usage). The notion of validity is up to the users of the dataset to define, and to break, if deemed necessary. 
 
@@ -223,3 +224,15 @@ node ./server.js
 ```
 
 Then the UI-interface is available at `http://localhost:8888`
+
+
+### Running the summary generator
+Generate a short, textual summary based on plan summary. You can supply a custom text to change the style/tone the LLM responds with.
+
+```
+node ./s2.js <plan_id> [style]
+
+# e.g. 
+node ./s2.js 1234 "Be a funny comedian"
+```
+
