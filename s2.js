@@ -167,6 +167,28 @@ async function withRetry(fn, retries = 2) {
   }
 }
 
+
+async function writeArrayToJSONL(filePath, dataArray) {
+  const stream = fs.createWriteStream(filePath, { encoding: 'utf8' });
+
+  for (const item of dataArray) {
+    const jsonLine = JSON.stringify(item) + '\n';
+
+    if (!stream.write(jsonLine)) {
+      await new Promise(resolve => stream.once('drain', resolve));
+    }
+  }
+
+  stream.end();
+
+  return new Promise((resolve, reject) => {
+    stream.on('finish', resolve);
+    stream.on('error', reject);
+  });
+}
+
+
+
 if (process.argv.length === 5) {
   const startIdx = +(process.argv[2]);
   const endIdx = +(process.argv[3]);
@@ -180,6 +202,7 @@ if (process.argv.length === 5) {
   const total = prompts.length;
   let completed = 0;
 
+  console.log(`Starting ${startIdx} to ${endIdx}:`);
   const results = await Promise.all(
     prompts.map(prompt =>
       withRetry(() => callModel(prompt)).then(res => {
@@ -193,13 +216,17 @@ if (process.argv.length === 5) {
   );
   console.log(`Done ${completed} / total`);
 
+  const output = [];
+  let cnt = 0;
   for (let i = startIdx; i <= endIdx; i++) {
     const obj = {
       id: plans[i].id, 
-      title: results[i].text
+      summary: results[cnt].text
     };
-    console.log(obj);
+    output.push(obj);
+    cnt ++;
   }
+  await writeArrayToJSONL('./titles.jsonl', output);
 
 } else if (process.argv.length === 4) {
   const index = +(process.argv[2]);
@@ -228,6 +255,8 @@ if (process.argv.length === 5) {
     node ./s2.js <planId> [style]
   `)
 }
+console.log('');
+console.log('');
 
 
 
