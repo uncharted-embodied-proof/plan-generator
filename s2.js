@@ -104,7 +104,9 @@ function createPrompt(plan, styleHint) {
   }
 
   const prompt = `
-    Reason over these summary metrics from a flight plan ${plan.id}, each metric is graded on a 6-level scale:
+    Reason over these summary metrics from a flight plan ${plan.id} to deliver supply to patient and fly back 
+    to base, each metric is graded on a 6-level scale:
+
     Outstanding > Good > Borderline > Poor > Unacceptable
 
     - Patient Survival: ${goodScale(summary.patientSurvival)}
@@ -115,14 +117,21 @@ function createPrompt(plan, styleHint) {
     - Fuel usage: ${energyScale(summary.energyReserve)}
     - Delivery time: ${deliveryScale(summary.deliveryTime)}
 
-    Summarize above into a title for the flight, in 15 or fewer words. ${style}
+    if Fuel usage is Unacceptable it will unlikely make it back to base
+
+    Summarize above into a title for the flight, in 25 or fewer words. ${style}
+
+    Do not apply markdown formatting
+  `;
+
+   /*
     Examples of good titles are:
     - Rapid Response: Critical Patient Delivery
     - High-Speed Life-Saving Mission
     - Patient Priority: Full Throttle Delivery
+  */
 
-    Do not apply markdown formatting
-  `;
+
 
   return prompt;
 

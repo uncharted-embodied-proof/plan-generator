@@ -19,4 +19,7 @@ node ./s2.js 30000 30019 "$STYLE_HINT"
 mv titles.jsonl t4
 
 
+echo "Concat results"
+rm script_out.jsonl
 cat t1 t2 t3 t4 >> script_out.jsonl
+rm t1 t2 t3 t4
