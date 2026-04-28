@@ -479,7 +479,7 @@ const plans = expandedPlans.map((p, i) => {
 
     const batteryLevel = (E_full - energyConsumption - totalEnergy); 
 
-    const droneTemperatureLoad = (T_zone - 0.5 * (T_max + T_min)) / (0.5 * (T_max - T_min));
+    const droneTemperatureLoad = Math.abs((T_zone - 0.5 * (T_max + T_min)) / (0.5 * (T_max - T_min)));
 
     const dronePowerLoad = Math.min(1.0, powerConsumption / P_max);
 
@@ -607,6 +607,8 @@ const plans = expandedPlans.map((p, i) => {
   // invert so high nubmer means "good"
   tempDeviation *= -1;
 
+  const maxOne = (v) => Math.max(1.0, v);
+
   return { 
     id: i, 
     summary: {
@@ -614,17 +616,17 @@ const plans = expandedPlans.map((p, i) => {
       energy: +(totalEnergy.toFixed(0)),
       deliveryTime: +(deliveryTime.toFixed(0)),
       deliveryTimeMargin: +(t_payload_max - deliveryTime).toFixed(0),
-      payloadDeliveryTimeSafety,
-      bloodIntegrity: payloadSafety,
-      droneSafety,
-      dronePowerSafety,
-      droneBatterySafety,
-      routeSafety,
-      temperatureSafety,
-      ascentSafety,
-      windSafety,
-      assetSafety,
-      patientSurvival: patientSafety,
+      payloadDeliveryTimeSafety: maxOne(payloadDeliveryTimeSafety),
+      bloodIntegrity: maxOne(payloadSafety),
+      droneSafety: maxOne(droneSafety),
+      dronePowerSafety: maxOne(dronePowerSafety),
+      droneBatterySafety: maxOne(droneBatterySafety),
+      routeSafety: maxOne(routeSafety),
+      temperatureSafety: maxOne(temperatureSafety),
+      ascentSafety: maxOne(ascentSafety),
+      windSafety: maxOne(windSafety),
+      assetSafety: maxOne(assetSafety),
+      patientSurvival: maxOne(patientSafety),
       energyReserve: +((E_full - totalEnergy) / E_full).toFixed(3),
       payloadTemperatureDeviation: tempDeviation,
 
