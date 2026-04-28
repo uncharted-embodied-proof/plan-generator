@@ -607,7 +607,7 @@ const plans = expandedPlans.map((p, i) => {
   // invert so high nubmer means "good"
   tempDeviation *= -1;
 
-  const maxOne = (v) => Math.max(1.0, v);
+  const maxOne = (v) => Math.min(1.0, v);
 
   return { 
     id: i, 
